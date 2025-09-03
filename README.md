@@ -22,6 +22,7 @@ A Java API that lets us call methods on objects that live on another JVM (remote
 ## Why it matters in DS
 •	It’s a tool to learn object-based distributed systems: we can interact with remote objects, not just raw sockets.
 
+
 •	It demonstrates core DS principles: transparency, stubs/skeletons, 
 marshalling, and communication.
 
