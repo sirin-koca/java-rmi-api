@@ -1,6 +1,6 @@
 # Distributed Systems (DS) + Java RMI API
 
-## Java RMI TEST
+## Java RMI 
 Java Remote Method Invocation (Java RMI) enables the programmer to create distributed Java technology-based applications, in which the methods of remote Java objects can be invoked from other Java virtual machines, possibly on different hosts. RMI uses object serialization to marshal and unmarshal parameters and does not truncate types, supporting true object-oriented polymorphism.
 
 •	Distributed Systems (DS): 
