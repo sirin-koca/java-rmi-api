@@ -63,16 +63,16 @@ public class Client
         if (e instanceof RemoteException)
         {
             logger.log(Level.SEVERE, "Failed to connect to RMI server", e);
-            System.err.println("Error: Unable to connect to server. Please check if the server is running and " +
-                    "accessible.");
+            System.err.println("Error: Unable to connect to server. Please " + "check if the server is running and " + "accessible.");
         } else if (e instanceof NotBoundException)
         {
             logger.log(Level.SEVERE, "Server 'server' not found in registry", e);
-            System.err.println("Error: Server not found. Please ensure the server is started and properly registered.");
+            System.err.println("Error: Server not found. Please ensure the " + "server is started and properly " +
+                    "registered.");
         } else
         {
-            logger.log(Level.SEVERE, "Unexpected error during client operation", e);
-            System.err.println("Error: Unexpected error occurred while connecting to server.");
+            logger.log(Level.SEVERE, "Unexpected error during client " + "operation", e);
+            System.err.println("Error: Unexpected error occurred while " + "connecting to server.");
         }
     }
     
