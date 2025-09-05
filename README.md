@@ -1,32 +1,48 @@
-# Distributed Systems (DS) + Java RMI API
+# Java RMI – International Statistics Service
 
-## Java RMI 
-Java Remote Method Invocation (Java RMI) enables us to create distributed Java technology-based applications, 
-in which the methods of remote Java objects can be invoked from other Java virtual machines, possibly on different hosts. 
+_🚧 Work in progress –This README will be updated as the project grows._
 
-RMI uses object serialization to marshal and unmarshal parameters and does not truncate types, supporting true object-oriented polymorphism.
+## Overview
 
-•	Distributed Systems (DS): 
-A system where multiple computers (nodes) communicate and coordinate their actions by passing messages over a network. 
-Goal: behave like one system when parts are on different machines.
-  
-•	RMI = Remote Method Invocation
-A Java API that lets us call methods on objects that live on another JVM (remote computer) as if they were local.
+This project is the first mandatory assignment in IN5020.
+We will implement a distributed system using Java RMI, with following components:
+- Proxy (load balancer) server
+- Multiple processing servers across zones
+- Client issuing statistical queries on a global cities dataset
+- Naïve parsing, server-side caching, and client-side caching strategies
+- Docker containerization for deployment
 
-## How it works (simplified)
-1.	Interface (defines remote methods, must extend java.rmi.Remote).
-2.	Server (class that implements the interface, registered in RMI registry).
-3.	Client (looks up the remote object in the registry and calls its methods).
-4.	RMI runtime handles communication, object serialization, network sockets, etc.
+Objective: Measure and compare performance (latency, execution time, waiting time) across different setups.
 
-## Why it matters in DS
-•	It’s a tool to learn object-based distributed systems: we can interact with remote objects, not just raw sockets.
+## Features
 
+- Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
+- Servers: Handle statistical queries, queues, and simulate network latency.
+- Client: Parses query files, executes remote calls, and collects performance metrics.
+- Caching:
+  - Naïve (no cache)
+  - Server-side cache (FIFO / LRU)
+  - Client-side cache
+- Dockerized Deployment: Servers containerized for reproducibility.
+- Graphs & Logs: Visualize turnaround time, execution time, waiting time, and server queue length.
 
-•	It demonstrates core DS principles: transparency, stubs/skeletons, 
-marshalling, and communication.
+## Queries Supported
 
-### Java RMI API = the standard Java library to build object-based distributed applications.
+```
+getPopulationofCountry(countryName)
+getNumberofCities(countryName, threshold, comp)
+getNumberofCountries(citycount, threshold, comp)
+getNumberofCountriesMM(citycount, minPopulation, maxPopulation)
+```
+
+### What is Java RMI
+
+Java Remote Method Invocation (RMI) allows distributed Java applications to call methods on remote objects running in other 
+JVMs, possibly on different hosts. It uses object serialization to transfer data and fully supports polymorphism across the network.
+
+#### Key Concept: Distributed Systems: 
+A Distributed System consists of multiple computers (nodes) that communicate and coordinate over a network. 
+The goal is to appear as a single, unified system, even though its components run on different machines.
 
 _Source: [Java SE Remote Method Invocation APIs and Developer Guides](https://docs.oracle.com/javase/8/docs/technotes/guides/rmi/index.html)_
 
