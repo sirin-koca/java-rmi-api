@@ -38,6 +38,13 @@ public class Client
             Registry registry = LocateRegistry.getRegistry();
             ServerInterface server = (ServerInterface) registry.lookup("server");
             System.out.println(server.Add(10, 20));
+            System.out.println(server.Add(11, 20));
+            System.out.println(server.Add(10, 20));
+            System.out.println(server.Add(12, 20));
+            System.out.println(server.Add(12, 20));
+            System.out.println(server.Add(5, 5));
+            System.out.println(server.Add(10, 20));
+            System.out.println(server.Add(5, 5));
         } catch (RemoteException | NotBoundException e)
         {
             handleClientError(e);

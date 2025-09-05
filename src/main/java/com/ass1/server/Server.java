@@ -7,14 +7,70 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Formatter;
+import java.util.logging.LogRecord;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class Server implements ServerInterface
 {
     private static final Logger logger = Logger.getLogger(Server.class.getName());
+    private static final int CACHE_SIZE = 3;
+    
+    static
+    {
+        logger.setUseParentHandlers(false);
+        ConsoleHandler handler = new ConsoleHandler();
+        handler.setFormatter(new Formatter()
+        {
+            @Override
+            public String format(LogRecord record)
+            {
+                return record.getMessage() + "\n";
+            }
+        });
+        logger.addHandler(handler);
+    }
+    
+    // FIFO cache using LinkedHashMap with access order
+    private final Map<String, Integer> cache = new LinkedHashMap<>(16, 0.75f, false)
+    {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest)
+        {
+            boolean shouldRemove = size() > CACHE_SIZE;
+            if (shouldRemove)
+            {
+                logger.info("Cache eviction: Removing eldest entry '" + eldest.getKey() + "' = " + eldest.getValue() + " (Policy: FIFO, Cache size exceeded: " + size() + " > " + CACHE_SIZE + ")");
+            }
+            return shouldRemove;
+        }
+    };
     
     public int Add(int num1, int num2)
     {
-        return num1 + num2;
+        // Create a unique key for the computation
+        String key = num1 + "+" + num2;
+        
+        // Check if result is already in cache
+        synchronized (cache)
+        {
+            if (cache.containsKey(key))
+            {
+                logger.info("Cache hit for computation: " + key);
+                return cache.get(key);
+            }
+            
+            // Perform computation
+            int result = num1 + num2;
+            
+            // Store in cache
+            cache.put(key, result);
+            logger.info("Computed and cached: " + key + " = " + result + " (Cache size: " + cache.size() + ")");
+            
+            return result;
+        }
     }
     
     private static void handleServerStartupError(Exception e)
@@ -31,7 +87,8 @@ public class Server implements ServerInterface
         {
             logger.log(Level.SEVERE, "Unexpected error during server startup", e);
             System.err.println("Error: Unexpected error occurred during server startup.");
-        } System.exit(1);
+        }
+        System.exit(1);
     }
     
     public static void main(String[] args)
@@ -57,9 +114,11 @@ public class Server implements ServerInterface
         
         try
         {
-            Registry registry = LocateRegistry.getRegistry(); Server server = new Server();
+            Registry registry = LocateRegistry.getRegistry();
+            Server server = new Server();
             ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
-            registry.bind("server", serverStub); logger.info("Server started successfully and bound to registry");
+            registry.bind("server", serverStub);
+            logger.info("Server started successfully and bound to registry");
         } catch (RemoteException | AlreadyBoundException e)
         {
             handleServerStartupError(e);
