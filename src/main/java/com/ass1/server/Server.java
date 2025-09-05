@@ -1,5 +1,7 @@
 package com.ass1.server;
 
+import com.ass1.common.LoggerConfig;
+
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -7,31 +9,13 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Formatter;
-import java.util.logging.LogRecord;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Server implements ServerInterface
 {
-    private static final Logger logger = Logger.getLogger(Server.class.getName());
+    private static final Logger logger = LoggerConfig.getSimpleLogger(Server.class);
     private static final int CACHE_SIZE = 3;
-    
-    static
-    {
-        logger.setUseParentHandlers(false);
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(new Formatter()
-        {
-            @Override
-            public String format(LogRecord record)
-            {
-                return record.getMessage() + "\n";
-            }
-        });
-        logger.addHandler(handler);
-    }
     
     // FIFO cache using LinkedHashMap with access order
     private final Map<String, Integer> cache = new LinkedHashMap<>(16, 0.75f, false)
@@ -103,7 +87,7 @@ public class Server implements ServerInterface
             registry.bind("server", serverStub);
             
             logger.info("Server started successfully and bound to registry");
-            System.out.println("Server is ready and waiting for clients...");
+            logger.info("Server is ready and waiting for clients...");
             
             // Keep the server running
             Thread.currentThread().join();
