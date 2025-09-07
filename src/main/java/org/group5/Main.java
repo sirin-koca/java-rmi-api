@@ -9,7 +9,7 @@ proxy-based load balancing, caching, and Docker deployment.
 package org.group5;
 public class Main {
     public static void main(String[] args) {
-        // Tradisjonstro starter med å printe ut "Hello RMI World!".
+        // Test "Hello RMI World!".
         System.out.println("Hello RMI World!");
 
     }
