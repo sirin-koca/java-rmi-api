@@ -8,6 +8,6 @@ public interface ProxyService extends Remote {
     ServerEndpoint registerServer(String host, int registryPort, String suggestedBindingName)
             throws RemoteException;
 
-    // Client asks for server for a given zone (minimal for now: just return same-zone if registered)
+    // Client asks for server for a given zone
     ServerEndpoint getServerForZone(int zone) throws RemoteException;
 }

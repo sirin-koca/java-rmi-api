@@ -11,7 +11,7 @@ import java.rmi.server.UnicastRemoteObject;
 public class ServerMain {
 
     public static void main(String[] args) throws Exception {
-        String dataset = "/dataset/exercise_1_dataset.csv"; // put CSV under src/main/resources/dataset/
+        String dataset = "/dataset/exercise_1_dataset.csv"; // put csv-file here: src/main/resources/dataset/
         int registryPort = 1099;
 
         // Start RMI registry if not running
