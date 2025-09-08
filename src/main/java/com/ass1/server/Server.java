@@ -1,6 +1,8 @@
 package com.ass1.server;
 
 import com.ass1.common.LoggerConfig;
+import com.ass1.common.ComputationCache;
+
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -9,53 +11,60 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class Server implements ServerInterface
 {
     private static final Logger logger = LoggerConfig.getSimpleLogger(Server.class);
     private static final int CACHE_SIZE = 3;
     
-    // FIFO cache using LinkedHashMap with access order
-    private final Map<String, Integer> cache = new LinkedHashMap<>(16, 0.75f, false)
+    // Configuration flags
+    private static boolean cacheEnabled = false;
+    private static boolean useLRU = false;
+    
+    // Server-side cache using
+    private final ComputationCache cache;
+    
+    public Server()
     {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest)
+        if (cacheEnabled)
         {
-            boolean shouldRemove = size() > CACHE_SIZE;
-            if (shouldRemove)
-            {
-                logger.info("Cache eviction: Removing eldest entry '" + eldest.getKey() + "' = " + eldest.getValue() + " (Policy: FIFO, Cache size exceeded: " + size() + " > " + CACHE_SIZE + ")");
-            }
-            return shouldRemove;
+            cache = new ComputationCache(CACHE_SIZE, useLRU, "Server", logger);
+        } else
+        {
+            cache = null;
         }
-    };
+    }
     
     public int Add(int num1, int num2)
     {
+        // If cache is disabled, perform computation directly
+        if (!cacheEnabled || cache == null)
+        {
+            int result = num1 + num2;
+            logger.info("Computed (no cache): " + num1 + "+" + num2 + " = " + result);
+            return result;
+        }
+        
         // Create a unique key for the computation
         String key = num1 + "+" + num2;
         
         // Check if result is already in cache
-        synchronized (cache)
+        Integer cachedResult = cache.get(key);
+        if (cachedResult != null)
         {
-            if (cache.containsKey(key))
-            {
-                logger.info("Cache hit for computation: " + key);
-                return cache.get(key);
-            }
-            
-            // Perform computation
-            int result = num1 + num2;
-            
-            // Store in cache
-            cache.put(key, result);
-            logger.info("Computed and cached: " + key + " = " + result + " (Cache size: " + cache.size() + ")");
-            
-            return result;
+            return cachedResult;
         }
+        
+        // Cache miss - perform computation
+        logger.info("Server cache miss for: " + key + " - performing computation");
+        int result = num1 + num2;
+        
+        // Store in cache
+        cache.put(key, result);
+        
+        return result;
     }
+    
     
     private static void handleServerStartupError(Exception e)
     {
@@ -75,8 +84,57 @@ public class Server implements ServerInterface
         System.exit(1);
     }
     
+    private static void parseCommandLineArgs(String[] args)
+    {
+        // It's reasonable to expect the Client and Server to potentially have different command line arguments,
+        // so making a common method doesn't necessarily make sense.
+        //noinspection DuplicatedCode
+        for (String arg : args)
+        {
+            switch (arg)
+            {
+                case "--enable-cache":
+                    cacheEnabled = true;
+                    logger.info("Cache enabled");
+                    break;
+                case "--use-lru":
+                    useLRU = true;
+                    logger.info("LRU cache policy selected");
+                    break;
+                case "--help":
+                    printUsage();
+                    System.exit(0);
+                    break;
+                default:
+                    if (arg.startsWith("--"))
+                    {
+                        System.err.println("Unknown flag: " + arg);
+                        printUsage();
+                        System.exit(1);
+                    }
+                    break;
+            }
+        }
+    }
+    
+    private static void printUsage()
+    {
+        System.out.println("Usage: java Server [OPTIONS]");
+        System.out.println("Options:");
+        System.out.println("  --enable-cache    Enable server-side caching (default: false)");
+        System.out.println("  --use-lru         Use LRU eviction policy instead of FIFO (default: false)");
+        System.out.println("  --help            Show this help message");
+        System.out.println();
+        System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");
+    }
+    
     public static void main(String[] args)
     {
+        parseCommandLineArgs(args);
+        
+        // Log configuration
+        logger.info("Server configuration: cache=" + cacheEnabled + ", useLRU=" + useLRU);
+        
         try
         {
             // Start RMI registry programmatically
@@ -95,18 +153,5 @@ public class Server implements ServerInterface
         {
             handleServerStartupError(e);
         }
-        
-        try
-        {
-            Registry registry = LocateRegistry.getRegistry();
-            Server server = new Server();
-            ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(server, 0);
-            registry.bind("server", serverStub);
-            logger.info("Server started successfully and bound to registry");
-        } catch (RemoteException | AlreadyBoundException e)
-        {
-            handleServerStartupError(e);
-        }
-        
     }
 }

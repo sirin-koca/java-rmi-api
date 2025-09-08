@@ -1,14 +1,14 @@
 package com.ass1.client;
 
 import com.ass1.common.LoggerConfig;
+import com.ass1.common.ComputationCache;
+
 import com.ass1.server.ServerInterface;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -17,46 +17,52 @@ public class Client
     private static final Logger logger = LoggerConfig.getSimpleLogger(Client.class);
     private static final int CACHE_SIZE = 3;
     
-    // Client-side FIFO cache using LinkedHashMap
-    private static final Map<String, Integer> clientCache = new LinkedHashMap<>(16, 0.75f, false)
+    // Configuration flags
+    private static boolean cacheEnabled = false;
+    private static boolean useLRU = false;
+    
+    // Client-side cache
+    private static ComputationCache clientCache;
+    
+    private static void initializeCache()
     {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest)
+        if (cacheEnabled)
         {
-            boolean shouldRemove = size() > CACHE_SIZE;
-            if (shouldRemove)
-            {
-                logger.info("Cache eviction: Removing eldest entry '" + eldest.getKey() + "' = " + eldest.getValue() + " (Policy: FIFO, Cache size exceeded: " + size() + " > " + CACHE_SIZE + ")");
-            }
-            return shouldRemove;
+            clientCache = new ComputationCache(CACHE_SIZE, useLRU, "Client", logger);
+        } else
+        {
+            clientCache = null;
         }
-    };
+    }
     
     // Cached wrapper for Add method
     private static int cachedAdd(ServerInterface server, int num1, int num2) throws RemoteException
     {
+        // If cache is disabled, make direct RMI call
+        if (!cacheEnabled || clientCache == null)
+        {
+            return server.Add(num1, num2);
+        }
+        
         String key = num1 + "+" + num2;
         
-        synchronized (clientCache)
+        // Check client cache first
+        Integer cachedResult = clientCache.get(key);
+        if (cachedResult != null)
         {
-            // Check client cache first
-            if (clientCache.containsKey(key))
-            {
-                logger.info("Client cache hit for: " + key + " = " + clientCache.get(key));
-                return clientCache.get(key);
-            }
-            
-            // Cache miss - make actual RMI call
-            logger.info("Client cache miss for: " + key + " - making RMI call");
-            int result = server.Add(num1, num2);
-            
-            // Store result in client cache
-            clientCache.put(key, result);
-            logger.info("Cached result in client: " + key + " = " + result + " (Client cache size: " + clientCache.size() + ")");
-            
-            return result;
+            return cachedResult;
         }
+        
+        // Cache miss - make actual RMI call
+        logger.info("Client cache miss for: " + key + " - making RMI call");
+        int result = server.Add(num1, num2);
+        
+        // Store result in client cache
+        clientCache.put(key, result);
+        
+        return result;
     }
+    
     
     private static void handleClientError(Exception e)
     {
@@ -76,8 +82,58 @@ public class Client
         }
     }
     
+    private static void parseCommandLineArgs(String[] args)
+    {
+        // It's reasonable to expect the Client and Server to potentially have different command line arguments,
+        // so making a common method doesn't necessarily make sense.
+        //noinspection DuplicatedCode
+        for (String arg : args)
+        {
+            switch (arg)
+            {
+                case "--enable-cache":
+                    cacheEnabled = true;
+                    logger.info("Cache enabled");
+                    break;
+                case "--use-lru":
+                    useLRU = true;
+                    logger.info("LRU cache policy selected");
+                    break;
+                case "--help":
+                    printUsage();
+                    System.exit(0);
+                    break;
+                default:
+                    if (arg.startsWith("--"))
+                    {
+                        System.err.println("Unknown flag: " + arg);
+                        printUsage();
+                        System.exit(1);
+                    }
+                    break;
+            }
+        }
+    }
+    
+    private static void printUsage()
+    {
+        System.out.println("Usage: java Client [OPTIONS]");
+        System.out.println("Options:");
+        System.out.println("  --enable-cache    Enable client-side caching (default: false)");
+        System.out.println("  --use-lru         Use LRU eviction policy instead of FIFO (default: false)");
+        System.out.println("  --help            Show this help message");
+        System.out.println();
+        System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");
+    }
+    
     public static void main(String[] args)
     {
+        parseCommandLineArgs(args);
+        initializeCache();
+        
+        // Log configuration
+        logger.info("Client configuration: cache=" + cacheEnabled + ", useLRU=" + useLRU);
+        
         try
         {
             Registry registry = LocateRegistry.getRegistry();
