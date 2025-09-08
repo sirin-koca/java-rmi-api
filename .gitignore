@@ -25,3 +25,6 @@ replay_pid*
 
 # User-specific IDE config
 .idea
+
+# Project config (could vary from user to user while coding/testing)
+*.iml
