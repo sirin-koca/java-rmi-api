@@ -5,25 +5,28 @@ _🚧 Work in progress –This README will be updated as the project grows._
 ### 1. Overview
 
 This project is the first mandatory assignment in IN5020.
-We will implement a distributed system using Java RMI, with following components:
-- Proxy (load balancer) server
-- Multiple processing servers across zones
-- Client issuing statistical queries on a global cities dataset
-- Naïve parsing, server-side caching, and client-side caching strategies
-- Docker containerization for deployment
-
-Objective: Measure and compare performance (latency, execution time, waiting time) across different setups.
+We will implement a distributed system using Java RMI, measure and compare performance (latency, execution time, 
+waiting time) across different setups.
 
 ### 2. Features
-- Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
-- Servers: Handle statistical queries, queues, and simulate network latency.
+- Stub/Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
+- Servers: Multiple processing servers across zones, handle statistical queries, queues, and simulate network latency.
 - Client: Parses query files, executes remote calls, and collects performance metrics.
-- Caching methods
+- Caching methods: Naïve parsing, server-side caching, and client-side caching strategies
 - Dockerized Deployment: Servers containerized for reproducibility.
 - Graphs & Logs: Visualize turnaround time, execution time, waiting time, and server queue length.
 
 ### 3. System Architecture
 _Short description of Proxy, Server, Client roles, dataset and storage (* visualize the SA - diagram etc.)_
+
+### 4. Caching Strategies
+- Naïve (no cache).
+- Server-side cache (FIFO, LRU).
+- Client-side cache.
+
+### 5. Dataset
+- CSV file with geonames all cities with population >1000
+~140,000 cities worldwide.
 #### Queries Supported
 ```
 getPopulationofCountry(countryName)
@@ -31,17 +34,18 @@ getNumberofCities(countryName, threshold, comp)
 getNumberofCountries(citycount, threshold, comp)
 getNumberofCountriesMM(citycount, minPopulation, maxPopulation)
 ```
-### 4. Caching Strategies
-- Naïve (no cache).
-- Server-side cache (FIFO, LRU).
-- Client-side cache.
-
-### 5. Dataset
-Source: Geonames all cities with population >1000
-~140,000 cities worldwide.
 
 ### 6. Build & Run
 _(How to build (Maven), how to run Proxy, Servers, Client etc.) - mention Dockerizing here (sirin)_
+
+🔹 Runtime Flow
+- Server starts: creates a remote object → binds it into the RMI Registry under a name.
+- Client starts: asks the Registry for "HelloService" (or whatever name).
+- RMI Registry returns a stub (proxy reference) to the client.
+- Client now calls methods on the stub (like a normal method call).
+- Stub (proxy) forwards the call across the network to the remote object on the server.
+- Server object executes the method and returns the result.
+- Stub delivers the result back to the client.
 
 ### 7. Output & Measurements
 - Output files: naive_server.txt, server_cache.txt, client_cache.txt.
