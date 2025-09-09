@@ -1,3 +1,4 @@
+package org.group5.server;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.RemoteException;
