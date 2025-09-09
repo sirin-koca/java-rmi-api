@@ -12,9 +12,9 @@ import java.rmi.registry.Registry;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-public class Client
+public class ClientSimulator
 {
-    private static final Logger logger = LoggerConfig.getSimpleLogger(Client.class);
+    private static final Logger logger = LoggerConfig.getSimpleLogger(ClientSimulator.class);
     private static final int CACHE_SIZE = 3;
     
     // Configuration flags
@@ -29,37 +29,50 @@ public class Client
         if (cacheEnabled)
         {
             clientCache = new ComputationCache(CACHE_SIZE, useLRU, "Client", logger);
-        } else
+        }
+        else
         {
             clientCache = null;
         }
     }
     
     // Cached wrapper for Add method
-    private static int cachedAdd(ServerInterface server, int num1, int num2) throws RemoteException
+    private static int RemoteAdd(ServerInterface server, int geo_zone, int num1, int num2) throws RemoteException
     {
-        // If cache is disabled, make direct RMI call
-        if (!cacheEnabled || clientCache == null)
+        int result = -1;
+        
+        // Cache enabled and working
+        if (cacheEnabled && clientCache != null)
         {
+            String key = num1 + "+" + num2;
+            
+            // Check cache
+            Integer cachedResult = clientCache.get(key);
+            if (cachedResult != null)
+            {
+                return cachedResult;
+            }
+            
+            // Cache miss - make RMI call
+            logger.info("Cache: miss for \"" + key + "\" - making RMI call");
+            result = server.Add(num1, num2);
+            
+            // Store result in cache
+            clientCache.put(key, result);
+        }
+        else
+        {
+            // Cache broken
+            if (clientCache == null)
+            {
+                throw new NullPointerException("Client cache is null");
+            }
+            
+            // Cache disabled - make RMI call and return result
             return server.Add(num1, num2);
         }
         
-        String key = num1 + "+" + num2;
-        
-        // Check client cache first
-        Integer cachedResult = clientCache.get(key);
-        if (cachedResult != null)
-        {
-            return cachedResult;
-        }
-        
-        // Cache miss - make actual RMI call
-        logger.info("Client cache miss for: " + key + " - making RMI call");
-        int result = server.Add(num1, num2);
-        
-        // Store result in client cache
-        clientCache.put(key, result);
-        
+        // Return cached result (whether it was a hit or miss)
         return result;
     }
     
@@ -70,12 +83,14 @@ public class Client
         {
             logger.log(Level.SEVERE, "Failed to connect to RMI server", e);
             System.err.println("Error: Unable to connect to server. Please " + "check if the server is running and " + "accessible.");
-        } else if (e instanceof NotBoundException)
+        }
+        else if (e instanceof NotBoundException)
         {
             logger.log(Level.SEVERE, "Server 'server' not found in registry", e);
             System.err.println("Error: Server not found. Please ensure the " + "server is started and properly " +
                     "registered.");
-        } else
+        }
+        else
         {
             logger.log(Level.SEVERE, "Unexpected error during client " + "operation", e);
             System.err.println("Error: Unexpected error occurred while " + "connecting to server.");
@@ -139,14 +154,14 @@ public class Client
             Registry registry = LocateRegistry.getRegistry();
             ServerInterface server = (ServerInterface) registry.lookup("server");
             
-            System.out.println(cachedAdd(server, 10, 20));
-            System.out.println(cachedAdd(server, 11, 20));
-            System.out.println(cachedAdd(server, 10, 20));
-            System.out.println(cachedAdd(server, 12, 20));
-            System.out.println(cachedAdd(server, 12, 20));
-            System.out.println(cachedAdd(server, 5, 5));
-            System.out.println(cachedAdd(server, 10, 20));
-            System.out.println(cachedAdd(server, 5, 5));
+            System.out.println(RemoteAdd(server, 1, 10, 20));
+            System.out.println(RemoteAdd(server, 1, 11, 20));
+            System.out.println(RemoteAdd(server, 1, 10, 20));
+            System.out.println(RemoteAdd(server, 1, 12, 20));
+            System.out.println(RemoteAdd(server, 1, 12, 20));
+            System.out.println(RemoteAdd(server, 1, 5, 5));
+            System.out.println(RemoteAdd(server, 1, 10, 20));
+            System.out.println(RemoteAdd(server, 1, 5, 5));
         } catch (RemoteException | NotBoundException e)
         {
             handleClientError(e);
