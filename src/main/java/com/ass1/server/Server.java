@@ -13,6 +13,7 @@ import java.util.logging.Level;
 
 public class Server implements ServerInterface
 {
+    private static final int GEOGRAPHICAL_ZONE = 1;
     private static final Logger logger = LoggerConfig.getSimpleLogger(Server.class);
     private static final int CACHE_SIZE = 3;
     
@@ -28,39 +29,50 @@ public class Server implements ServerInterface
         if (cacheEnabled)
         {
             cache = new ComputationCache(CACHE_SIZE, useLRU, "Server", logger);
-        } else
+        }
+        else
         {
             cache = null;
         }
     }
     
+    @Override
     public int Add(int num1, int num2)
     {
-        // If cache is disabled, perform computation directly
-        if (!cacheEnabled || cache == null)
+        int result = -1;
+        
+        // Cache enabled and working
+        if (cacheEnabled && cache != null)
         {
-            int result = num1 + num2;
-            logger.info("Computed (no cache): " + num1 + "+" + num2 + " = " + result);
-            return result;
+            String key = num1 + "+" + num2;
+            
+            // Check cache
+            Integer cachedResult = cache.get(key);
+            if (cachedResult != null)
+            {
+                return cachedResult;
+            }
+            
+            // Cache miss - perform computation
+            logger.info("Cache: miss for \"" + key + "\" - performing computation");
+            result = num1 + num2;
+            
+            // Store in cache
+            cache.put(key, result);
+        }
+        else
+        {
+            // Cache broken
+            if (cache == null)
+            {
+                throw new NullPointerException("Server cache is null");
+            }
+            
+            // Cache disabled - return computation result directly
+            result = num1 + num2;
         }
         
-        // Create a unique key for the computation
-        String key = num1 + "+" + num2;
-        
-        // Check if result is already in cache
-        Integer cachedResult = cache.get(key);
-        if (cachedResult != null)
-        {
-            return cachedResult;
-        }
-        
-        // Cache miss - perform computation
-        logger.info("Server cache miss for: " + key + " - performing computation");
-        int result = num1 + num2;
-        
-        // Store in cache
-        cache.put(key, result);
-        
+        // Return cached result (whether it was a hit or miss)
         return result;
     }
     
@@ -71,11 +83,13 @@ public class Server implements ServerInterface
         {
             logger.log(Level.SEVERE, "Failed to start RMI server due to remote communication error", e);
             System.err.println("Error: Unable to start server. Please check if RMI registry is running.");
-        } else if (e instanceof AlreadyBoundException)
+        }
+        else if (e instanceof AlreadyBoundException)
         {
             logger.log(Level.SEVERE, "Server name 'server' is already bound in registry", e);
             System.err.println("Error: Server is already running or name is already in use.");
-        } else
+        }
+        else
         {
             logger.log(Level.SEVERE, "Unexpected error during server startup", e);
             System.err.println("Error: Unexpected error occurred during server startup.");
