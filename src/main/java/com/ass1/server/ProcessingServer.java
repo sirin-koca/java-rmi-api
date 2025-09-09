@@ -45,7 +45,7 @@ public class ProcessingServer implements ServerInterface
     @Override
     public int Add(int num1, int num2)
     {
-        int result = -1;
+        int result;
         
         // Cache enabled and working
         if (cacheEnabled && cache != null)
