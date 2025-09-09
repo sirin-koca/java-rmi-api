@@ -1,17 +1,17 @@
-package com.ass1.client;
-
-import com.ass1.common.LoggerConfig;
-import com.ass1.common.ComputationCache;
-
-import com.ass1.proxy.ProxyServerInterface;
-import com.ass1.proxy.ServerInfo;
-import com.ass1.server.ProcessingServerInterface;
+package org.group5.client;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.logging.Logger;
+
+import org.group5.common.ComputationCache;
+import org.group5.common.LoggerConfig;
+import org.group5.proxy.ProxyServerInterface;
+import org.group5.proxy.ServerInfo;
+import org.group5.server.ProcessingServerInterface;
+
 import java.util.logging.Level;
 
 public class ClientSimulator

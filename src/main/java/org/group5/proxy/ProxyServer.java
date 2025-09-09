@@ -1,6 +1,4 @@
-package com.ass1.proxy;
-
-import com.ass1.common.LoggerConfig;
+package org.group5.proxy;
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -10,6 +8,9 @@ import java.rmi.AlreadyBoundException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
+
+import org.group5.common.LoggerConfig;
+
 import java.util.logging.Level;
 
 public class ProxyServer implements ProxyServerInterface

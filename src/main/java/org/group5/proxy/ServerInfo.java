@@ -1,4 +1,4 @@
-package com.ass1.proxy;
+package org.group5.proxy;
 
 import java.io.Serial;
 import java.io.Serializable;
