@@ -39,7 +39,7 @@ public class ClientSimulator
     }
     
     // Cached wrapper for Add method
-    private static int RemoteAdd(ServerInterface server, int geo_zone, int num1, int num2) throws RemoteException
+    private static int RemoteAdd(ServerInterface server, int num1, int num2) throws RemoteException
     {
         int result = -1;
         
@@ -175,14 +175,14 @@ public class ClientSimulator
     {
         try
         {
-            System.out.println("\n--- Simulating client from zone " + clientZone + " ---");
+            logger.info("\n--- Simulating client from zone " + clientZone + " ---");
             
             // Connect to server through proxy for this specific zone
             ServerInterface server = connectToServerForZone(clientZone);
             
             // Perform one Add operation as specified in requirements
-            int result = RemoteAdd(server, clientZone, num1, num2);
-            System.out.println("Zone " + clientZone + " client: " + num1 + " + " + num2 + " = " + result);
+            int result = RemoteAdd(server, num1, num2);
+            logger.info("Zone " + clientZone + " client: " + num1 + " + " + num2 + " = " + result);
             
             // Connection is automatically disconnected when we exit this method
             // Next request will go through the proxy again
@@ -190,7 +190,7 @@ public class ClientSimulator
         }
         catch (RemoteException | NotBoundException e)
         {
-            System.err.println("Error for client in zone " + clientZone + ":");
+            logger.warning("Error for client in zone " + clientZone + ":");
             handleClientError(e);
         }
     }
@@ -214,7 +214,6 @@ public class ClientSimulator
         simulateClientRequest(4, 20, 30);
         simulateClientRequest(2, 10, 20);
         
-        System.out.println("\nClientSimulator completed all simulated requests");
         logger.info("ClientSimulator finished successfully");
     }
     
