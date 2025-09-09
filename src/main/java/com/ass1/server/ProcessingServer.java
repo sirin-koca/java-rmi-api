@@ -13,7 +13,7 @@ import java.rmi.AlreadyBoundException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-public class ProcessingServer implements ServerInterface
+public class ProcessingServer implements ProcessingServerInterface
 {
     private static final int GEOGRAPHICAL_ZONE = 1;
     private static final Logger logger = LoggerConfig.getSimpleLogger(ProcessingServer.class);
@@ -43,7 +43,7 @@ public class ProcessingServer implements ServerInterface
     }
     
     @Override
-    public int Add(int num1, int num2)
+    public int add(int num1, int num2)
     {
         int result;
         
@@ -219,7 +219,8 @@ public class ProcessingServer implements ServerInterface
             }
             
             ProcessingServer processingServer = new ProcessingServer();
-            ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(processingServer, 0);
+            ProcessingServerInterface serverStub =
+                    (ProcessingServerInterface) UnicastRemoteObject.exportObject(processingServer, 0);
             
             // Use unique registry name based on server ID
             String registryName = "server-" + serverId;

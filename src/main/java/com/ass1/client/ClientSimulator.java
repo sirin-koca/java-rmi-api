@@ -5,7 +5,7 @@ import com.ass1.common.ComputationCache;
 
 import com.ass1.proxy.ProxyServerInterface;
 import com.ass1.proxy.ServerInfo;
-import com.ass1.server.ServerInterface;
+import com.ass1.server.ProcessingServerInterface;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -38,9 +38,9 @@ public class ClientSimulator
         }
     }
     
-    private static int RemoteAdd(ServerInterface server, int num1, int num2) throws RemoteException
+    private static int remoteAdd(ProcessingServerInterface server, int num1, int num2) throws RemoteException
     {
-        return server.Add(num1, num2);
+        return server.add(num1, num2);
     }
     
     /**
@@ -119,7 +119,8 @@ public class ClientSimulator
      * @return ServerInterface for the assigned server
      * @throws RemoteException, NotBoundException if connection fails
      */
-    private static ServerInterface connectToServerForZone(int clientZone) throws RemoteException, NotBoundException
+    private static ProcessingServerInterface connectToServerForZone(int clientZone) throws RemoteException,
+            NotBoundException
     {
         Registry registry = LocateRegistry.getRegistry();
         
@@ -130,7 +131,7 @@ public class ClientSimulator
         logger.info("Client from zone " + clientZone + " - Proxy assigned server: " + serverInfo);
         
         // Now connect to the assigned server
-        ServerInterface server = (ServerInterface) registry.lookup(serverInfo.getRegistryName());
+        ProcessingServerInterface server = (ProcessingServerInterface) registry.lookup(serverInfo.getRegistryName());
         logger.info("Client from zone " + clientZone +
                 " - Successfully connected to processing server in zone " + serverInfo.getZone());
         
@@ -172,10 +173,10 @@ public class ClientSimulator
                 logger.info("Zone " + clientZone + " client: Establishing connection for computation");
                 
                 // Connect to server through proxy for this specific zone
-                ServerInterface server = connectToServerForZone(clientZone);
+                ProcessingServerInterface server = connectToServerForZone(clientZone);
                 
                 // Perform the Add operation
-                result = RemoteAdd(server, num1, num2);
+                result = remoteAdd(server, num1, num2);
                 
                 // Store result in cache for future use
                 clientCache.put(cacheKey, result);
@@ -194,10 +195,10 @@ public class ClientSimulator
                 logger.info("Zone " + clientZone + " client: Establishing connection for computation (cache disabled)");
                 
                 // Connect to server through proxy for this specific zone
-                ServerInterface server = connectToServerForZone(clientZone);
+                ProcessingServerInterface server = connectToServerForZone(clientZone);
                 
                 // Perform the Add operation
-                result = RemoteAdd(server, num1, num2);
+                result = remoteAdd(server, num1, num2);
                 
                 logger.info("Zone " + clientZone + " client: " + num1 + " + " + num2 +
                         " = " + result + " (computed via RMI)");
