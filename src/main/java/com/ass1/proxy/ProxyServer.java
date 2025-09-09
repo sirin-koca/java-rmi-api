@@ -107,11 +107,22 @@ public class ProxyServer implements ProxyServerInterface
     {
         ServerInfo closestServer = null;
         int minDistance = Integer.MAX_VALUE;
+        final int NUM_ZONES = 5;
         
         for (ServerInfo server : registeredServers.values())
         {
-            int distance = Math.abs(server.getZone() - targetZone);
-            if (distance < minDistance)
+            int serverZone = server.getZone();
+            
+            // Calculate both clockwise and counter-clockwise distances
+            int clockwiseDistance = ((serverZone - targetZone) + NUM_ZONES) % NUM_ZONES;
+            int counterClockwiseDistance = ((targetZone - serverZone) + NUM_ZONES) % NUM_ZONES;
+            
+            // Take the minimum distance
+            int distance = Math.min(clockwiseDistance, counterClockwiseDistance);
+            
+            // Update if we found a closer server, or same distance but clockwise (tiebreak)
+            if (distance < minDistance ||
+                    (distance == minDistance && clockwiseDistance <= counterClockwiseDistance))
             {
                 minDistance = distance;
                 closestServer = server;
