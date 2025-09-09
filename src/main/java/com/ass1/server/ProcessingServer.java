@@ -27,7 +27,6 @@ public class ProcessingServer implements ServerInterface
     private static int serverZone = GEOGRAPHICAL_ZONE;
     private static String serverId;
     
-    
     // Server-side cache using
     private final ComputationCache cache;
     
@@ -82,7 +81,6 @@ public class ProcessingServer implements ServerInterface
         // Return cached result (whether it was a hit or miss)
         return result;
     }
-    
     
     private static void handleServerStartupError(Exception e)
     {
@@ -160,7 +158,6 @@ public class ProcessingServer implements ServerInterface
         }
     }
     
-    
     private static void printUsage()
     {
         System.out.println("Usage: java Server [OPTIONS]");
@@ -197,7 +194,6 @@ public class ProcessingServer implements ServerInterface
             System.err.println("Warning: Could not register with proxy server. Continuing without proxy registration.");
         }
     }
-    
     
     public static void main(String[] args)
     {
