@@ -3,6 +3,8 @@ package com.ass1.client;
 import com.ass1.common.LoggerConfig;
 import com.ass1.common.ComputationCache;
 
+import com.ass1.proxy.ProxyServerInterface;
+import com.ass1.proxy.ServerInfo;
 import com.ass1.server.ServerInterface;
 
 import java.rmi.NotBoundException;
@@ -63,7 +65,7 @@ public class ClientSimulator
         else
         {
             // Cache broken
-            if (clientCache == null)
+            if (cacheEnabled)
             {
                 throw new NullPointerException("Client cache is null");
             }
@@ -141,30 +143,79 @@ public class ClientSimulator
         System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");
     }
     
+    /**
+     * Connects to a processing server through the proxy for a specific zone
+     *
+     * @param clientZone The geographical zone of the simulated client
+     * @return ServerInterface for the assigned server
+     * @throws RemoteException, NotBoundException if connection fails
+     */
+    private static ServerInterface connectToServerForZone(int clientZone) throws RemoteException, NotBoundException
+    {
+        Registry registry = LocateRegistry.getRegistry();
+        
+        // First, contact the proxy to get server information
+        ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
+        ServerInfo serverInfo = proxy.requestProcessingServer(clientZone);
+        
+        logger.info("Client from zone " + clientZone + " - Proxy assigned server: " + serverInfo);
+        
+        // Now connect to the assigned server
+        ServerInterface server = (ServerInterface) registry.lookup(serverInfo.getRegistryName());
+        logger.info("Client from zone " + clientZone + " - Successfully connected to processing server in zone " + serverInfo.getZone());
+        
+        return server;
+    }
+    
+    /**
+     * Simulates a client request from a specific zone Connects to proxy, gets assigned server, performs one Add
+     * operation, then disconnects
+     */
+    private static void simulateClientRequest(int clientZone, int num1, int num2)
+    {
+        try
+        {
+            System.out.println("\n--- Simulating client from zone " + clientZone + " ---");
+            
+            // Connect to server through proxy for this specific zone
+            ServerInterface server = connectToServerForZone(clientZone);
+            
+            // Perform one Add operation as specified in requirements
+            int result = RemoteAdd(server, clientZone, num1, num2);
+            System.out.println("Zone " + clientZone + " client: " + num1 + " + " + num2 + " = " + result);
+            
+            // Connection is automatically disconnected when we exit this method
+            // Next request will go through the proxy again
+            
+        }
+        catch (RemoteException | NotBoundException e)
+        {
+            System.err.println("Error for client in zone " + clientZone + ":");
+            handleClientError(e);
+        }
+    }
+    
+    
     public static void main(String[] args)
     {
         parseCommandLineArgs(args);
         initializeCache();
         
         // Log configuration
-        logger.info("Client configuration: cache=" + cacheEnabled + ", useLRU=" + useLRU);
+        logger.info("ClientSimulator configuration: cache=" + cacheEnabled + ", useLRU=" + useLRU);
         
-        try
-        {
-            Registry registry = LocateRegistry.getRegistry();
-            ServerInterface server = (ServerInterface) registry.lookup("server");
-            
-            System.out.println(RemoteAdd(server, 1, 10, 20));
-            System.out.println(RemoteAdd(server, 1, 11, 20));
-            System.out.println(RemoteAdd(server, 1, 10, 20));
-            System.out.println(RemoteAdd(server, 1, 12, 20));
-            System.out.println(RemoteAdd(server, 1, 12, 20));
-            System.out.println(RemoteAdd(server, 1, 5, 5));
-            System.out.println(RemoteAdd(server, 1, 10, 20));
-            System.out.println(RemoteAdd(server, 1, 5, 5));
-        } catch (RemoteException | NotBoundException e)
-        {
-            handleClientError(e);
-        }
+        // Simulate multiple clients from different geographical zones
+        simulateClientRequest(1, 10, 20);
+        simulateClientRequest(3, 15, 25);
+        simulateClientRequest(1, 10, 20);
+        simulateClientRequest(5, 30, 40);
+        simulateClientRequest(2, 12, 18);
+        simulateClientRequest(1, 5, 5);
+        simulateClientRequest(4, 20, 30);
+        simulateClientRequest(2, 10, 20);
+        
+        System.out.println("\nClientSimulator completed all simulated requests");
+        logger.info("ClientSimulator finished successfully");
     }
+    
 }

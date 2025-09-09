@@ -70,7 +70,7 @@ public class ProcessingServer implements ServerInterface
         else
         {
             // Cache broken
-            if (cache == null)
+            if (cacheEnabled)
             {
                 throw new NullPointerException("Server cache is null");
             }
@@ -204,15 +204,23 @@ public class ProcessingServer implements ServerInterface
         parseCommandLineArgs(args);
         
         // Generate unique server ID
-        serverId = "server-zone" + serverZone + "-" + System.currentTimeMillis();
+        serverId = "zone" + serverZone + "-" + System.currentTimeMillis();
         
         // Log configuration
         logger.info("Server configuration: cache=" + cacheEnabled + ", useLRU=" + useLRU + ", zone=" + serverZone);
         
         try
         {
-            // Start RMI registry programmatically
-            Registry registry = LocateRegistry.createRegistry(1099);
+            // Get RMI registry
+            Registry registry;
+            try
+            {
+                registry = LocateRegistry.getRegistry();
+            }
+            catch (RemoteException e)
+            {
+                throw new RuntimeException("Failed to get RMI registry", e);
+            }
             
             ProcessingServer processingServer = new ProcessingServer();
             ServerInterface serverStub = (ServerInterface) UnicastRemoteObject.exportObject(processingServer, 0);
