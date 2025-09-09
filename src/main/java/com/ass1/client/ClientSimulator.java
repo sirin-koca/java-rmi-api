@@ -38,64 +38,32 @@ public class ClientSimulator
         }
     }
     
-    // Cached wrapper for Add method
     private static int RemoteAdd(ServerInterface server, int num1, int num2) throws RemoteException
     {
-        int result = -1;
-        
-        // Cache enabled and working
-        if (cacheEnabled && clientCache != null)
-        {
-            String key = num1 + "+" + num2;
-            
-            // Check cache
-            Integer cachedResult = clientCache.get(key);
-            if (cachedResult != null)
-            {
-                return cachedResult;
-            }
-            
-            // Cache miss - make RMI call
-            logger.info("Cache: miss for \"" + key + "\" - making RMI call");
-            result = server.Add(num1, num2);
-            
-            // Store result in cache
-            clientCache.put(key, result);
-        }
-        else
-        {
-            // Cache broken
-            if (cacheEnabled)
-            {
-                throw new NullPointerException("Client cache is null");
-            }
-            
-            // Cache disabled - make RMI call and return result
-            return server.Add(num1, num2);
-        }
-        
-        // Return cached result (whether it was a hit or miss)
-        return result;
+        return server.Add(num1, num2);
     }
     
+    /**
+     * Generates a cache key for the given operation
+     */
+    private static String generateCacheKey(int num1, int num2)
+    {
+        return num1 + "+" + num2;
+    }
     
     private static void handleClientError(Exception e)
     {
         if (e instanceof RemoteException)
         {
             logger.log(Level.SEVERE, "Failed to connect to RMI server", e);
-            System.err.println("Error: Unable to connect to server. Please " + "check if the server is running and " + "accessible.");
         }
         else if (e instanceof NotBoundException)
         {
             logger.log(Level.SEVERE, "Server 'server' not found in registry", e);
-            System.err.println("Error: Server not found. Please ensure the " + "server is started and properly " +
-                    "registered.");
         }
         else
         {
-            logger.log(Level.SEVERE, "Unexpected error during client " + "operation", e);
-            System.err.println("Error: Unexpected error occurred while " + "connecting to server.");
+            logger.log(Level.SEVERE, "Unexpected error during client operation", e);
         }
     }
     
@@ -144,7 +112,8 @@ public class ClientSimulator
     }
     
     /**
-     * Connects to a processing server through the proxy for a specific zone
+     * Simulates a single independent client with a singular request to be fulfilled, it gets a dedicated connection
+     * that is only used for this request
      *
      * @param clientZone The geographical zone of the simulated client
      * @return ServerInterface for the assigned server
@@ -162,14 +131,15 @@ public class ClientSimulator
         
         // Now connect to the assigned server
         ServerInterface server = (ServerInterface) registry.lookup(serverInfo.getRegistryName());
-        logger.info("Client from zone " + clientZone + " - Successfully connected to processing server in zone " + serverInfo.getZone());
+        logger.info("Client from zone " + clientZone +
+                " - Successfully connected to processing server in zone " + serverInfo.getZone());
         
         return server;
     }
     
     /**
-     * Simulates a client request from a specific zone Connects to proxy, gets assigned server, performs one Add
-     * operation, then disconnects
+     * Simulates a client request from a specific zone First checks cache (if enabled), then connects to proxy/server if
+     * needed
      */
     private static void simulateClientRequest(int clientZone, int num1, int num2)
     {
@@ -177,15 +147,64 @@ public class ClientSimulator
         {
             logger.info("\n--- Simulating client from zone " + clientZone + " ---");
             
-            // Connect to server through proxy for this specific zone
-            ServerInterface server = connectToServerForZone(clientZone);
+            int result;
             
-            // Perform one Add operation as specified in requirements
-            int result = RemoteAdd(server, num1, num2);
-            logger.info("Zone " + clientZone + " client: " + num1 + " + " + num2 + " = " + result);
+            // Cache enabled and working
+            if (cacheEnabled && clientCache != null)
+            {
+                // Generate cache key
+                String cacheKey = generateCacheKey(num1, num2);
+                
+                // Check cache
+                Integer cachedResult = clientCache.get(cacheKey);
+                
+                if (cachedResult != null)
+                {
+                    // Cache hit
+                    logger.info("Cache: hit for \"" + cacheKey + "\" - no connection needed");
+                    logger.info("Zone " + clientZone + " client: " + num1 + " + " + num2 +
+                            " = " + cachedResult + " (from cache, no connection made)");
+                    return;
+                }
+                
+                // Cache miss - need to connect and compute
+                logger.info("Cache: miss for \"" + cacheKey + "\" - connection required");
+                logger.info("Zone " + clientZone + " client: Establishing connection for computation");
+                
+                // Connect to server through proxy for this specific zone
+                ServerInterface server = connectToServerForZone(clientZone);
+                
+                // Perform the Add operation
+                result = RemoteAdd(server, num1, num2);
+                
+                // Store result in cache for future use
+                clientCache.put(cacheKey, result);
+                logger.info("Cache: stored result for \"" + cacheKey + "\"");
+                
+                logger.info("Zone " + clientZone + " client: " + num1 + " + " + num2 +
+                        " = " + result + " (computed via RMI, cached)");
+            }
+            else
+            {
+                if (cacheEnabled)
+                {
+                    throw new NullPointerException("Client cache is null");
+                }
+                // Cache disabled - always connect and compute
+                logger.info("Zone " + clientZone + " client: Establishing connection for computation (cache disabled)");
+                
+                // Connect to server through proxy for this specific zone
+                ServerInterface server = connectToServerForZone(clientZone);
+                
+                // Perform the Add operation
+                result = RemoteAdd(server, num1, num2);
+                
+                logger.info("Zone " + clientZone + " client: " + num1 + " + " + num2 +
+                        " = " + result + " (computed via RMI)");
+            }
             
             // Connection is automatically disconnected when we exit this method
-            // Next request will go through the proxy again
+            // Next request will go through the proxy again (unless cached)
             
         }
         catch (RemoteException | NotBoundException e)
@@ -194,7 +213,6 @@ public class ClientSimulator
             handleClientError(e);
         }
     }
-    
     
     public static void main(String[] args)
     {
@@ -216,5 +234,4 @@ public class ClientSimulator
         
         logger.info("ClientSimulator finished successfully");
     }
-    
 }
