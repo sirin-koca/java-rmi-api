@@ -10,6 +10,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
+import java.util.concurrent.*;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -27,8 +28,28 @@ public class ProcessingServer implements ProcessingServerInterface
     private static int serverZone = GEOGRAPHICAL_ZONE;
     private static String serverId;
     
-    // Server-side cache using
+    // Server-side cache
     private final ComputationCache cache;
+    
+    // Task queue and processing thread
+    private final BlockingQueue<ComputationTask> taskQueue;
+    private final ExecutorService processingExecutor;
+    private volatile boolean isRunning = true;
+    
+    // Inner class to represent a computation task
+    private static class ComputationTask
+    {
+        final int num1;
+        final int num2;
+        final CompletableFuture<Integer> resultFuture;
+        
+        ComputationTask(int num1, int num2)
+        {
+            this.num1 = num1;
+            this.num2 = num2;
+            this.resultFuture = new CompletableFuture<>();
+        }
+    }
     
     public ProcessingServer()
     {
@@ -40,10 +61,60 @@ public class ProcessingServer implements ProcessingServerInterface
         {
             cache = null;
         }
+        
+        // Initialize FIFO queue (LinkedBlockingQueue maintains FIFO order)
+        taskQueue = new LinkedBlockingQueue<>();
+        
+        // Single thread for processing tasks
+        processingExecutor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r);
+            t.setName("ProcessingThread");
+            t.setDaemon(false);
+            return t;
+        });
+        
+        // Start the processing thread
+        startProcessingThread();
     }
     
-    @Override
-    public int add(int num1, int num2)
+    private void startProcessingThread()
+    {
+        processingExecutor.submit(() -> {
+            logger.info("Processing thread started");
+            while (isRunning)
+            {
+                try
+                {
+                    // Take task from queue (blocks if queue is empty)
+                    ComputationTask task = taskQueue.take();
+                    
+                    // Process the task
+                    int result = performComputation(task.num1, task.num2);
+                    
+                    // Artificial delay to see RMI calls being multithreaded
+                    Thread.sleep(1000);
+                    
+                    // Complete the future with the result
+                    task.resultFuture.complete(result);
+                    
+                    logger.info("Processed task: " + task.num1 + " + " + task.num2 + " = " + result);
+                }
+                catch (InterruptedException e)
+                {
+                    Thread.currentThread().interrupt();
+                    logger.info("Processing thread interrupted");
+                    break;
+                }
+                catch (Exception e)
+                {
+                    logger.log(Level.SEVERE, "Error in processing thread", e);
+                }
+            }
+            logger.info("Processing thread stopped");
+        });
+    }
+    
+    private int performComputation(int num1, int num2)
     {
         int result;
         
@@ -78,8 +149,75 @@ public class ProcessingServer implements ProcessingServerInterface
             result = num1 + num2;
         }
         
-        // Return cached result (whether it was a hit or miss)
         return result;
+    }
+    
+    @Override
+    public int add(int num1, int num2) throws RemoteException
+    {
+        // Task creation is automatically multi-threaded due to Java RMI semantics
+        logger.info("Thread " + Thread.currentThread().getName() + " processing add(" + num1 + ", " + num2 + ")");
+        ComputationTask task = new ComputationTask(num1, num2);
+        
+        try
+        {
+            // Add task to queue (FIFO order maintained)
+            taskQueue.offer(task);
+            
+            // Log queue size for monitoring
+            logger.info("Task queued. Current queue size: " + taskQueue.size());
+            
+            // Wait for the result (blocking call)
+            return task.resultFuture.get(30, TimeUnit.SECONDS);
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
+            throw new RemoteException("Computation interrupted", e);
+        }
+        catch (ExecutionException e)
+        {
+            throw new RemoteException("Computation failed", e.getCause());
+        }
+        catch (TimeoutException e)
+        {
+            throw new RemoteException("Computation timed out", e);
+        }
+    }
+    
+    public int getQueueSize()
+    {
+        return taskQueue.size();
+    }
+    
+    public boolean isProcessingThreadAlive()
+    {
+        return !processingExecutor.isShutdown() && !processingExecutor.isTerminated();
+    }
+    
+    public void shutdown()
+    {
+        logger.info("Shutting down server...");
+        isRunning = false;
+        
+        // Stop accepting new tasks
+        processingExecutor.shutdown();
+        
+        try
+        {
+            // Wait for existing tasks to complete
+            if (!processingExecutor.awaitTermination(60, TimeUnit.SECONDS))
+            {
+                processingExecutor.shutdownNow();
+            }
+        }
+        catch (InterruptedException e)
+        {
+            processingExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        logger.info("Server shutdown complete");
     }
     
     private static void handleServerStartupError(Exception e)
@@ -104,9 +242,6 @@ public class ProcessingServer implements ProcessingServerInterface
     
     private static void parseCommandLineArgs(String[] args)
     {
-        // It's reasonable to expect the Client and Server to potentially have different command line arguments,
-        // so making a common method doesn't necessarily make sense.
-        //noinspection DuplicatedCode
         for (int i = 0; i < args.length; i++)
         {
             String arg = args[i];
@@ -181,8 +316,8 @@ public class ProcessingServer implements ProcessingServerInterface
                     serverId,
                     serverRegistryName,
                     serverZone,
-                    "localhost", // Configurable, works for our purposes
-                    1099              // Potentially configurable as well
+                    "localhost",
+                    1099
             );
             
             proxy.registerServer(serverInfo);
@@ -205,6 +340,8 @@ public class ProcessingServer implements ProcessingServerInterface
         // Log configuration
         logger.info("Server configuration: cache=" + cacheEnabled + ", useLRU=" + useLRU + ", zone=" + serverZone);
         
+        ProcessingServer processingServer = null;
+        
         try
         {
             // Get RMI registry
@@ -218,7 +355,7 @@ public class ProcessingServer implements ProcessingServerInterface
                 throw new RuntimeException("Failed to get RMI registry", e);
             }
             
-            ProcessingServer processingServer = new ProcessingServer();
+            processingServer = new ProcessingServer();
             ProcessingServerInterface serverStub =
                     (ProcessingServerInterface) UnicastRemoteObject.exportObject(processingServer, 0);
             
@@ -233,12 +370,26 @@ public class ProcessingServer implements ProcessingServerInterface
             
             logger.info("Server is ready and waiting for clients...");
             
+            // Add shutdown hook for graceful shutdown
+            final ProcessingServer serverRef = processingServer;
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                logger.info("Shutdown hook triggered");
+                serverRef.shutdown();
+            }));
+            
             // Keep the server running
             Thread.currentThread().join();
         }
         catch (RemoteException | AlreadyBoundException | InterruptedException e)
         {
             handleServerStartupError(e);
+        }
+        finally
+        {
+            if (processingServer != null)
+            {
+                processingServer.shutdown();
+            }
         }
     }
 }
