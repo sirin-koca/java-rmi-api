@@ -1,4 +1,3 @@
-import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.RemoteException;
@@ -7,7 +6,7 @@ public class CreateServers {
     private int startPort;
     private int zone;
 
-    public void createServers(int numServers, int startPort, int zone) throws RemoteException, NotBoundException {
+    public void createServers(int numServers, int startPort, int zone) throws RemoteException {
         this.numServers = 5;
         this.startPort = 5000;
         System.out.println("Starting " + numServers + " servers");
