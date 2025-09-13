@@ -67,78 +67,90 @@ public class Server extends UnicastRemoteObject implements ServerInterface{
         }
     }
     //method that gets method name and arguments from client request
+    //method name is taken out first, so first argument refers to argument after method name
     private void processRequest(Request request) {
-        switch (request.getMethodName()) {
-            case "getPopulationofCountry":
-                //Call method and use request.Args()
-                break;
-            case "getNumberofCities":
-                //Call method and use request.Args()
-                break;
-            case "getNumberofCountries":
-                //Call method and use request.Args()
-                break;
-            case "getNumberofCountriesMM":
-                //Call method and use request.Args()
-                break;
-            default:
-                System.out.println("Method must be listed in Server Interface");
+        try {
+            switch (request.getMethodName()) {
+                case "getPopulationofCountry":
+                    String countryName = (String) request.getArgs()[0];
+                    long population = getPopulationofCountry(countryName);
+                    System.out.println("Population of " + countryName +": " + population);
+                    break;
+                case "getNumberofCities":
+                    String countryNameCities = (String) request.getArgs()[0];
+                    long threshold = (Long) request.getArgs()[1];
+                    int cityCount = getNumberofCities(countryNameCities, threshold);
+                    System.out.println("Number of cities in " + countryNameCities + " with population >= " + threshold + ": " + cityCount);
+                    break;
+                case "getNumberofCountries":
+                    int reqCityCount = (Integer) request.getArgs()[0];
+                    long populationThreshold = (Long) request.getArgs()[1];
+                    int countryCount = getNumberofCountries(reqCityCount, populationThreshold);
+                    System.out.println("Number of countries with at least " + reqCityCount + " cities with population >= " + populationThreshold + ": " + countryCount);
+                    break;
+                case "getNumberofCountriesMM":
+                    int cityCountThreshold = (Integer) request.getArgs()[0];
+                    long minPopulation = (Long) request.getArgs()[1];
+                    long maxPopulation = (Long) request.getArgs()[2];
+                    int countriesMMCount = getNumberofCountriesMM(cityCountThreshold, minPopulation, maxPopulation);
+                    System.out.println("Number of countries with at least " + cityCountThreshold + " cities with population between " + minPopulation + " and " + maxPopulation + ": " + countriesMMCount);
+                    break;
+                default:
+                    System.out.println("Method must be listed in Server Interface");
+                }
+            } catch (Exception e){
+            e.printStackTrace();
         }
     }
+
 
     @Override
     public long getPopulationofCountry(String countryName) throws RemoteException {
         //cache check here
         long population = 0;
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(csv_path)){
-                String line = br.readLine();
-                while (line != null) {
+        try (BufferedReader br = new BufferedReader(new FileReader(csv_path))){
+                String line;
+                while ((line = br.readLine()) != null) {
                     String[] fields = line.split(",");
                     //field 4 = country name, field 5 = population
                     if (fields.length > 5 && fields[4].equalsIgnoreCase(countryName)) {
                         population += Long.parseLong(fields[5]);
                     }
                 }
-            }
-        } catch (Exception e) {
+            } catch (Exception e) {
             e.printStackTrace();
         } return population;
     }
     @Override //minimum threshold
     public int getNumberofCities(String countryName, long threshold) throws RemoteException {
         int cityCount = 0;
-
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(csv_path)){
-                String line = br.readLine();
-                while (line != null) {
+        try (BufferedReader br = new BufferedReader(new FileReader(csv_path))){
+                String line;
+                while ((line = br.readLine()) != null) {
                     String[] fields = line.split(",");
                     if(fields.length > 5 && fields[4].equalsIgnoreCase(countryName) && Long.parseLong(fields[5]) >= threshold){
                         cityCount++;
                     }
                 }
-            }
-        } catch (Exception e) {
+            }catch (Exception e){
             e.printStackTrace();
         } return cityCount;
-        }
+    }
+
     @Override //minimum threshold
     public int getNumberofCountries(int citycount, long threshold) throws RemoteException {
         //Save cities above threshold per country in hashmap
         Map<String, Integer> citiesPerCountry = new HashMap<>();
         //count cites above threshold for each country
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(csv_path)){
-                String line = br.readLine();
-                while (line != null){
+        try (BufferedReader br = new BufferedReader(new FileReader(csv_path))){
+                String line;
+                while ((line = br.readLine()) != null){
                     String[] fields = line.split(",");
                     if (fields.length > 5 && Long.parseLong(fields[5]) >= threshold){
                         String countryName = fields[4];
                         citiesPerCountry.put(countryName, citiesPerCountry.getOrDefault(countryName,0) + 1);
                     }
                 }
-            }
         }catch (Exception e) {
             e.printStackTrace();
         }
@@ -155,10 +167,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface{
     public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation) throws RemoteException {
         Map<String, Integer> countryCities = new HashMap<>();
         //count cities within population interval per country
-        try {
-            BufferedReader br = new BufferedReader(new FileReader(csv_path)){
-                String line = br.readLine();
-                while (line != null){
+        try (BufferedReader br = new BufferedReader(new FileReader(csv_path))){
+                String line;
+                while ((line = br.readLine()) != null){
                     String[] fields = line.split(",");
                     long population = Long.parseLong(fields[5]);
                     String countryName = fields[4];
@@ -166,7 +177,6 @@ public class Server extends UnicastRemoteObject implements ServerInterface{
                         countryCities.put(countryName, countryCities.getOrDefault(countryName, 0) + 1);
                     }
                 }
-            }
         }catch (Exception e){
             e.printStackTrace();
         }
