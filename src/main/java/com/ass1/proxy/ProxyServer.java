@@ -9,12 +9,14 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.AlreadyBoundException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
 public class ProxyServer implements ProxyServerInterface
 {
     private static final Logger logger = LoggerConfig.getSimpleLogger(ProxyServer.class);
+    private volatile AtomicInteger nextZoneId = 1;
     
     // Data structure for existing servers - thread-safe collections
     private final ConcurrentHashMap<String, ServerInfo> registeredServers;
@@ -24,6 +26,7 @@ public class ProxyServer implements ProxyServerInterface
     {
         this.registeredServers = new ConcurrentHashMap<>();
         this.serversByZone = new ConcurrentHashMap<>();
+        this.nextZoneId = new AtomicInteger(1);
     }
     
     @Override
@@ -90,6 +93,17 @@ public class ProxyServer implements ProxyServerInterface
         {
             logger.warning("Attempted to unregister unknown server: " + serverId);
         }
+    }
+    
+    @Override
+    public synchronized int assignZoneNumber(String serverId) throws RemoteException
+    {
+        logger.info("Assigning zone number to server: " + serverId);
+        
+        int assignedZone = nextZoneId++;
+        
+        logger.info("Assigned zone " + assignedZone + " to server: " + serverId);
+        return assignedZone;
     }
     
     private ServerInfo findServerInZone(int zone)

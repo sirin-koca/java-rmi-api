@@ -29,4 +29,6 @@ public interface ProxyServerInterface extends Remote
      * @throws RemoteException if unregistration fails
      */
     void unregisterServer(String serverId) throws RemoteException;
+    
+    int assignZoneNumber(String serverId) throws RemoteException;
 }
