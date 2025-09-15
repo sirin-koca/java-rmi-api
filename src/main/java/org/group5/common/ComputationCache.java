@@ -5,15 +5,14 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Thread-safe String-to-Integer cache with configurable eviction policy.
+ * Thread-safe String-to-String cache with configurable eviction policy.
  */
 public class ComputationCache
 {
-    private final Logger logger; // Configurable output
-    private final int maxSize;
-    private final String cacheType; // For logging purposes (e.g., "Client", "Server")
+    private final Logger logger;                   // Configurable output
+    private final String cacheType;                // For logging purposes (e.g., "Client", "Server")
     private final Object cacheLock = new Object(); // Dedicated lock object
-    private final Map<String, Integer> cache;
+    private final Map<String, String> cache;
     
     /**
      * Creates a new computation cache.
@@ -25,14 +24,13 @@ public class ComputationCache
      */
     public ComputationCache(int maxSize, boolean useLRU, String cacheType, Logger logger)
     {
-        this.maxSize = maxSize;
         this.cacheType = cacheType;
         this.logger = logger;
         
         this.cache = new LinkedHashMap<>(16, 0.75f, useLRU)
         {
             @Override
-            protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest)
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest)
             {
                 boolean shouldRemove = size() > maxSize;
                 if (shouldRemove)
@@ -51,14 +49,18 @@ public class ComputationCache
      * @param key The cache key
      * @return The cached value, or null if not found
      */
-    public Integer get(String key)
+    public String get(String key)
     {
         synchronized (cacheLock)
         {
-            Integer value = cache.get(key);
+            String value = cache.get(key);
             if (value != null)
             {
-                logger.info(cacheType + " cache hit for: " + key + " = " + value);
+                logger.info(cacheType + " cache HIT for: " + key + " = " + value);
+            }
+            else
+            {
+                logger.info(cacheType + " cache MISS for: " + key);
             }
             return value;
         }
@@ -70,7 +72,7 @@ public class ComputationCache
      * @param key   The cache key
      * @param value The value to cache
      */
-    public void put(String key, Integer value)
+    public void put(String key, String value)
     {
         synchronized (cacheLock)
         {

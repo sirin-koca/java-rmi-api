@@ -1,4 +1,4 @@
-package org.group5.server;
+package archive.server;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
