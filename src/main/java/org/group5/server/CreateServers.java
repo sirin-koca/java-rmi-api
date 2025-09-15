@@ -4,18 +4,17 @@ import java.rmi.RemoteException;
 
 public class CreateServers
 {
-    public void createServers(int numServers, int startPort) throws RemoteException
+    public static void createServers(int numServers, int startPort, boolean cache, boolean lru) throws RemoteException
     {
         System.out.println("Starting " + numServers + " servers");
         for (int i = 1; i <= numServers; i++)
         {
-            new Server("server" + i, startPort + i);
+            new Server("server" + i, startPort + i, cache, lru);
         }
     }
     
     public static void main(String[] args) throws RemoteException
     {
-        CreateServers creator = new CreateServers();
-        creator.createServers(5, 5000);
+        createServers(5, 5000, true, true);
     }
 }
