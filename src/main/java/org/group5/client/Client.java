@@ -9,31 +9,39 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.group5.api.ProxyInterface;
+import org.group5.proxy.ProxyServerInterface;
+import org.group5.proxy.ServerInfo;
 import org.group5.server.ServerInterface;
 
 public class Client {
     public static void main(String[] args) throws Exception {
         String inputFile = "src/main/resources/dataset/exercise_1_input.txt";
-        String outputFile = ""; //Results
+        String outputFile = "src/main/resources/dataset/exercise_1_output.txt"; //Results
 
         //Client connects to proxy via RMI 
-        ProxyInterface proxy = (ProxyInterface) Naming.lookup("rmi://localhost:1099/ProxyService");
+        ProxyServerInterface proxy = (ProxyServerInterface) Naming.lookup("rmi://localhost:1099/proxy");
         
+        //Adds delay so not all requests get sent at once
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+        //Writes results to output file
         BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
 
         try (BufferedReader br = new BufferedReader(new FileReader(inputFile))) {
             String line;
+            //Small delay added between each query 
             int delay = 50; //change to 20 in second run 
+            int index = 0;
 
             while ((line = br.readLine()) != null) {
                 final String query = line;
+                final int currentIndex = index++;
+
                 scheduler.schedule(() -> {
                     try {
                         //Parse zone from query
                         int zone = Integer.parseInt(query.split("Zone:")[1].trim());
-                        String serverURL = proxy.getServerForZone(zone);
+                        ServerInfo serverInfo = proxy.requestProcessingServer(zone);
+                        String serverURL = "rmi://localhost:1099/" + serverInfo.getRegistryName();
 
                         ServerInterface server = (ServerInterface) Naming.lookup(serverURL);
                         //Will call methods defined by group inn here 
@@ -48,20 +56,18 @@ public class Client {
                         } else if (method.equals("getNumberofCities")) {
                             result = "Cities=" + server.getNumberofCities(
                                     parts[1],
-                                    Integer.parseInt(parts[2]),
-                                    parts[3]
+                                    Long.parseLong(parts[2])
                             );
                         } else if (method.equals("getNumberofCountries")) {
                             result = "Countries=" + server.getNumberofCountries(
                                     Integer.parseInt(parts[1]),
-                                    Integer.parseInt(parts[2]),
-                                    parts[3]
+                                    Long.parseLong(parts[2])
                             );
                         } else if (method.equals("getNumberofCountriesMM")) {
                             result = "Countries=" + server.getNumberofCountriesMM(
                                     Integer.parseInt(parts[1]),
-                                    Integer.parseInt(parts[2]),
-                                    Integer.parseInt(parts[3])
+                                    Long.parseLong(parts[2]),
+                                    Long.parseLong(parts[3])
                             );
                         }
 
@@ -70,7 +76,7 @@ public class Client {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                }, delay, TimeUnit.MILLISECONDS);
+                }, delay * currentIndex, TimeUnit.MILLISECONDS);
             }
         }
     }
