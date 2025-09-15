@@ -13,7 +13,7 @@ import org.group5.proxy.ProxyServerInterface;
 public class Server extends UnicastRemoteObject implements ServerInterface{
     private final BlockingQueue<Request> requestQueue; //needs zone number somewhere in here
     private final Thread requestHandlerThread;
-    private static final String csv_path = "/Users/Maryam/Desktop/java-rmi-api/src/main/resources/dataset/exercise_1_dataset.csv";
+    private static final String csv_path = "/src/main/resources/dataset/exercise_1_dataset.csv";
     private int zone; //will be assigned by proxy server
     private String name; //Assigned on instantiation
     private int port; //Assigned on instantiation
