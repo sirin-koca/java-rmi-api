@@ -24,6 +24,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     private static final int CACHE_SIZE = 150;
     private final BlockingQueue<Request> requestQueue;
     private static final String csv_path = "src/main/resources/dataset/exercise_1_dataset.csv";
+    private final int zone;
     
     // Configuration flags
     private static boolean cacheEnabled = false;
@@ -58,9 +59,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
             
             // Assign a zone from proxy
-            int zone = proxy.assignZoneNumber(name);
+            zone = proxy.assignZoneNumber(name);
             
-            // Bind server object in registry under its name
+            // Bind server object in registry under servers name
             registry.rebind(name, this);
             
             // Register server info with proxy
@@ -85,6 +86,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         parseCommandLineArgs(args);
     }
     
+    // Simulating latency before adding request to queue
     private synchronized CompletableFuture<Object> addRequest(Request request)
     {
         String requestId = UUID.randomUUID().toString();
@@ -95,6 +97,20 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         
         try
         {
+            int clientZone = request.getClientZone();
+            if (zone != clientZone)
+            {
+                // increase latency based on client zone
+                long latency = 80 + 30L * clientZone;
+                //                logger.info("Request from different zone, sleeping for " + latency + "ms");
+                Thread.sleep(latency);
+            }
+            else
+            {
+                // standard latency 80ms when client and server in same zone
+                //                logger.info("Request from same zone, sleeping for 80ms");
+                Thread.sleep(80);
+            }
             requestQueue.put(request);
         }
         catch (InterruptedException e)
@@ -107,9 +123,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     
     @Override
-    public long getPopulationofCountry(String countryName) throws RemoteException
+    public long getPopulationofCountry(String countryName, int clientZone) throws RemoteException
     {
-        Request request = new Request("getPopulationofCountry", countryName);
+        Request request = new Request("getPopulationofCountry", countryName, clientZone);
         
         try
         {
@@ -124,9 +140,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     
     @Override
-    public int getNumberofCities(String countryName, long threshold) throws RemoteException
+    public int getNumberofCities(String countryName, long threshold, int clientZone) throws RemoteException
     {
-        Request request = new Request("getNumberofCities", countryName, threshold);
+        Request request = new Request("getNumberofCities", countryName, threshold, clientZone);
         
         try
         {
@@ -140,9 +156,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     
     @Override
-    public int getNumberofCountries(int citycount, long threshold) throws RemoteException
+    public int getNumberofCountries(int citycount, long threshold, int clientZone) throws RemoteException
     {
-        Request request = new Request("getNumberofCountries", citycount, threshold);
+        Request request = new Request("getNumberofCountries", citycount, threshold, clientZone);
         
         try
         {
@@ -156,10 +172,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     
     @Override
-    public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation) throws RemoteException
+    public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation, int clientZone) throws RemoteException
     {
-        Request request = new Request("getNumberofCountriesMM", citycount, minpopulation, maxpopulation);
-        
+        Request request = new Request("getNumberofCountriesMM", citycount, minpopulation, maxpopulation, clientZone);
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -198,7 +213,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             {
                 try
                 {
-                    Request request = requestQueue.take(); // TODO: add latency simulation
+                    Request request = requestQueue.take();
                     processRequest(request);
                 }
                 catch (InterruptedException e)
@@ -222,7 +237,6 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             System.err.println("No future found for request: " + requestId);
             return;
         }
-        
         try
         {
             Object result = null;
@@ -239,11 +253,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                     // Parse cached result back to appropriate type
                     result = parseCachedResult(request.getMethodName(), cachedResult);
                 }
-                else
-                {
-                }
             }
-            
             // If not in cache, compute the result
             if (result == null)
             {
@@ -286,16 +296,13 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                                 new IllegalArgumentException("Unknown method: " + request.getMethodName()));
                         return;
                 }
-                
                 // Store result in cache if enabled
                 if (cacheEnabled && serverCache != null)
                 {
                     serverCache.put(cacheKey, result.toString());
                 }
             }
-            
             future.complete(result);
-            
         }
         catch (Exception e)
         {

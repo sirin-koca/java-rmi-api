@@ -35,4 +35,29 @@ public class Request implements Serializable
     {
         this.requestId = requestId;
     }
+    
+    // Method to get clients zone from request in order to add appropriate latency when adding to queue
+    public int getClientZone()
+    {
+        // args are type Object, need to cast to int
+        int clientZone = 0;
+        if (args.length > 0)
+        {
+            // zone is the last argument in all client requests
+            Object lastArg = args[args.length - 1];
+            if (lastArg instanceof Integer)
+            {
+                clientZone = (Integer) lastArg;
+            }
+            else
+            {
+                throw new IllegalArgumentException("Last argument must be an int");
+            }
+        }
+        else
+        {
+            throw new IllegalArgumentException("No arguments provided");
+        }
+        return clientZone;
+    }
 }

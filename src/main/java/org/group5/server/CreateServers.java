@@ -15,6 +15,6 @@ public class CreateServers
     
     public static void main(String[] args) throws RemoteException
     {
-        createServers(5, 5000, true, true);
+        createServers(3, 5000, true, true);
     }
 }

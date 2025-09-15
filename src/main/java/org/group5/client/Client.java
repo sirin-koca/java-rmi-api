@@ -56,7 +56,7 @@ public class Client
     
     // Helper method to execute server call with caching
     private static String executeWithCache(String cacheKey, ServerInterface server,
-                                           String method, String[] parts) throws Exception
+                                           String method, String[] parts, int zone) throws Exception
     {
         // Check cache if enabled
         if (cacheEnabled && clientCache != null)
@@ -70,31 +70,32 @@ public class Client
         
         // Execute the actual server call
         String result;
+        // Extract zone (final argument)
         switch (method)
         {
             case "getPopulationofCountry" ->
             {
                 String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length));
-                result = "Population=" + server.getPopulationofCountry(countryName);
+                result = "Population=" + server.getPopulationofCountry(countryName, zone);
             }
             case "getNumberofCities" ->
             {
                 long threshold = Long.parseLong(parts[parts.length - 1]);
                 String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length - 1));
-                result = "Cities=" + server.getNumberofCities(countryName, threshold);
+                result = "Cities=" + server.getNumberofCities(countryName, threshold, zone);
             }
             case "getNumberofCountries" ->
             {
                 int cityCount = Integer.parseInt(parts[1]);
                 long threshold = Long.parseLong(parts[2]);
-                result = "Countries=" + server.getNumberofCountries(cityCount, threshold);
+                result = "Countries=" + server.getNumberofCountries(cityCount, threshold, zone);
             }
             case "getNumberofCountriesMM" ->
             {
                 int cityCount = Integer.parseInt(parts[1]);
                 long minPopulation = Long.parseLong(parts[2]);
                 long maxPopulation = Long.parseLong(parts[3]);
-                result = "Countries=" + server.getNumberofCountriesMM(cityCount, minPopulation, maxPopulation);
+                result = "Countries=" + server.getNumberofCountriesMM(cityCount, minPopulation, maxPopulation, zone);
             }
             default ->
             {
@@ -179,7 +180,7 @@ public class Client
                             ServerInterface server = (ServerInterface) Naming.lookup(serverURL);
                             
                             // Execute with potential caching
-                            result = executeWithCache(cacheKey, server, method, parts);
+                            result = executeWithCache(cacheKey, server, method, parts, zone);
                         }
                         
                         synchronized (writer)
