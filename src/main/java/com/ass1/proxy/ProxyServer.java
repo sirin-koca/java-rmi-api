@@ -100,7 +100,7 @@ public class ProxyServer implements ProxyServerInterface
     {
         logger.info("Assigning zone number to server: " + serverId);
         
-        int assignedZone = nextZoneId++;
+        int assignedZone = nextZoneId.getAndIncrement();
         
         logger.info("Assigned zone " + assignedZone + " to server: " + serverId);
         return assignedZone;
