@@ -9,8 +9,8 @@ import java.util.logging.Logger;
  */
 public class ComputationCache
 {
-    private final Logger logger; // Configurable output
-    private final String cacheType; // For logging purposes (e.g., "Client", "Server")
+    private final Logger logger;                   // Configurable output
+    private final String cacheType;                // For logging purposes (e.g., "Client", "Server")
     private final Object cacheLock = new Object(); // Dedicated lock object
     private final Map<String, String> cache;
     
@@ -56,7 +56,11 @@ public class ComputationCache
             String value = cache.get(key);
             if (value != null)
             {
-                logger.info(cacheType + " cache hit for: " + key + " = " + value);
+                logger.info(cacheType + " cache HIT for: " + key + " = " + value);
+            }
+            else
+            {
+                logger.info(cacheType + " cache MISS for: " + key);
             }
             return value;
         }
