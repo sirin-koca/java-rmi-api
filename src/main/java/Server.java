@@ -12,10 +12,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface{
     private final BlockingQueue<Request> requestQueue; //needs zone number somewhere in here
     private final Thread requestHandlerThread;
     private static final String csv_path = "pathToCsvFile";
-    private int zone; //will be assigned by proxy server
+    private int zone = -1; //will be assigned by proxy server
     private String name; //Assigned on instantiation
     private int port; //Assigned on instantiation
-   //Registry registry;
 
     //Constructor that gets zone number from proxy and creates queue for requests
     protected Server(String name, int port) throws RemoteException {
@@ -23,13 +22,14 @@ public class Server extends UnicastRemoteObject implements ServerInterface{
        this.name = name;
        this.port = port;
        //this.registry = registry;
-       //this.zone = zone;
+        //start zone -1
+       this.zone = zone;
         this.requestQueue = new LinkedBlockingQueue<>();
 
         //connect to proxy and get zone number
         try {
-            Registry registry = LocateRegistry.getRegistry("localhost", 4040);//need correct port
-            ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("ProxyServer");
+            Registry registry = LocateRegistry.getRegistry("localhost", 1099);//need correct port
+            ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
             this.zone = proxy.assignZoneNumber(name);
             System.out.println("Assigned zone number: " +zone + " for server " + name);
             //Should I create new registry and bind server to it?
