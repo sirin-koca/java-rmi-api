@@ -13,7 +13,7 @@ import org.group5.proxy.ProxyServerInterface;
 public class Server extends UnicastRemoteObject implements ServerInterface{
     private final BlockingQueue<Request> requestQueue; //needs zone number somewhere in here
     private final Thread requestHandlerThread;
-    private static final String csv_path = "pathToCsvFile";
+    private static final String csv_path = "/Users/Maryam/Desktop/java-rmi-api/src/main/resources/dataset/exercise_1_dataset.csv";
     private int zone; //will be assigned by proxy server
     private String name; //Assigned on instantiation
     private int port; //Assigned on instantiation
@@ -29,16 +29,27 @@ public class Server extends UnicastRemoteObject implements ServerInterface{
         this.requestQueue = new LinkedBlockingQueue<>();
 
         //connect to proxy and get zone number
-        try {
-            Registry registry = LocateRegistry.getRegistry("localhost", 4040);//need correct port
-            ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("ProxyServer");
-            this.zone = proxy.assignZoneNumber(name);
-            System.out.println("Assigned zone number: " +zone + " for server " + name);
-            //Should I create new registry and bind server to it?
+        // connect to proxy and get zone number
+try {
+    Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+    ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
 
-        } catch (Exception e) {
-            throw new RemoteException("Failed to get zone number from proxy server");
-        }
+    // Assign a zone from proxy
+    this.zone = proxy.assignZoneNumber(name);
+
+    // Bind server object in registry under its name
+    registry.rebind(name, this);
+
+    // Register server info with proxy so it appears in status
+    org.group5.proxy.ServerInfo serverInfo =
+        new org.group5.proxy.ServerInfo(name, name, this.zone, "localhost", port);
+    proxy.registerServer(serverInfo);
+
+    System.out.println("Assigned zone number: " + zone + " for server " + name);
+} catch (Exception e) {
+    throw new RemoteException("Failed to register with proxy", e);
+}
+
         //Start thread to handle execution of requests from queue
         this.requestHandlerThread = new Thread(new RequestHandler());
         this.requestHandlerThread.start();

@@ -15,11 +15,16 @@ public class CreateServers {
         //ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("ProxyServer"); //name of proxy port for lookup
         //this.zone = proxy.assignZoneNumber("server-url"); //Function from proxy interface
         //System.out.println("Assigned zone number: " + zone);
-        for (int i = 0; i < numServers; i++){
+        for (int i = 1; i <= numServers; i++){
             Server server = new Server("server"+i, startPort + i);
     }
+    
 
 
 
+    }
+     public static void main(String[] args) throws RemoteException {
+        CreateServers creator = new CreateServers();
+        creator.createServers(5, 5000, 1);
     }
 }
