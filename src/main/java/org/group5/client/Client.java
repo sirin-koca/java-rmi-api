@@ -187,7 +187,7 @@ public class Client {
                             turnaround = endTurnaround - startTurnaround;
                             waitTime = turnaround - execTime;
 
-                            // Only log server zone if we really contacted a server
+                            //Only log server zone if we really contacted a server
                             writer.write(result + " " + query +
                                     " (turnaround time: " + turnaround +
                                     " ms, execution time: " + execTime +
@@ -202,16 +202,16 @@ public class Client {
                             stats.count++;
                             stats.minTurnaround = Math.min(stats.minTurnaround, turnaround);
                             stats.maxTurnaround = Math.max(stats.maxTurnaround, turnaround);
-                            
+
                         } else {
-                            // Cache hit - processed by CLIENT-CACHE
+                            //Cache hit - processed by CLIENT-CACHE
                             writer.write(result + " " + query +
                                     " (turnaround time: " + turnaround +
                                     " ms, execution time: " + execTime +
                                     " ms, waiting time: " + waitTime +
                                     " ms, processed by CLIENT-CACHE)\n");
 
-                            // Update stats for this method
+                            //Update stats for method
                             Stats stats = methodStats.computeIfAbsent(method, k -> new Stats());
                             stats.totalTurnaround += turnaround;
                             stats.totalExec += execTime;
