@@ -157,6 +157,9 @@ public class Client
                         
                         String result = null;
                         String serverURL = null;
+
+                        //Start timing for total turnaround time 
+                        long startTurnaround = System.currentTimeMillis();
                         
                         // Generate cache key (zone-independent)
                         String cacheKey = generateCacheKey(method, parts);
@@ -170,22 +173,43 @@ public class Client
                                 serverURL = "CLIENT-CACHE";
                             }
                         }
+
+                        long execTime = 0, turnaround = 0, waitTime = 0;
+                        ServerInfo serverInfo = null;
+                        
                         
                         // If not in cache, proceed with server lookup
                         if (result == null)
                         {
                             int zone = Integer.parseInt(query.split("Zone:")[1].trim());
-                            ServerInfo serverInfo = proxy.requestProcessingServer(zone);
+                            serverInfo = proxy.requestProcessingServer(zone); //Ask proxy for a server
                             serverURL = "rmi://localhost:1099/" + serverInfo.getRegistryName();
                             ServerInterface server = (ServerInterface) Naming.lookup(serverURL);
                             
+                            //Start time for exec only (server call)
+                            long startExecution = System.currentTimeMillis();
+
                             // Execute with potential caching
                             result = executeWithCache(cacheKey, server, method, parts, zone);
+
+                            //End timing for exec
+                            long endExecution = System.currentTimeMillis();
+
+                            //End time for for total turaround
+                            long endTurnaround = System.currentTimeMillis();
+                            //Then calculations :)
+                            execTime = endExecution - startExecution;
+                            turnaround = endTurnaround - startTurnaround;
+                            waitTime = turnaround - execTime;
                         }
                         
-                        synchronized (writer)
-                        {
-                            writer.write(query + " -> " + result + " (handled by " + serverURL + ")\n");
+                        //Results with time and server info 
+                        synchronized (writer) {
+                            writer.write(result + " " + query +
+                                    " (turnaround time: " + turnaround +
+                                    " ms, execution time: " + execTime +
+                                    " ms, waiting time: " + waitTime +
+                                    " ms, processed by Server " + serverInfo.getZone() + ")\n");
                             writer.flush();
                         }
                     }
