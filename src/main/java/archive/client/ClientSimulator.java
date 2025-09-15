@@ -1,4 +1,4 @@
-package org.group5.client;
+package archive.client;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -10,7 +10,7 @@ import org.group5.common.ComputationCache;
 import org.group5.common.LoggerConfig;
 import org.group5.proxy.ProxyServerInterface;
 import org.group5.proxy.ServerInfo;
-import org.group5.server.ProcessingServerInterface;
+import archive.server.ProcessingServerInterface;
 
 import java.util.logging.Level;
 
