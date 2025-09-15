@@ -17,7 +17,7 @@ import java.util.logging.Level;
 public class ProxyServer implements ProxyServerInterface
 {
     private static final Logger logger = LoggerConfig.getSimpleLogger(ProxyServer.class);
-    private volatile AtomicInteger nextZoneId;
+    private final AtomicInteger nextZoneId;
     
     // Data structure for existing servers - thread-safe collections
     private final ConcurrentHashMap<String, ServerInfo> registeredServers;

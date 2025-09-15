@@ -1,7 +1,5 @@
 package org.group5.client;
 
-import org.group5.api.*;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.file.*;

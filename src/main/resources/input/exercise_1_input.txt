@@ -1,0 +1,114 @@
+getPopulationofCountry Japan Zone:5
+getPopulationofCountry Guam Zone:1
+getPopulationofCountry Botswana Zone:2
+getPopulationofCountry Guadeloupe Zone:2
+getPopulationofCountry Oman Zone:4
+getPopulationofCountry Oman Zone:4
+getPopulationofCountry Oman Zone:4
+getPopulationofCountry Oman Zone:4
+getPopulationofCountry Togo Zone:1
+getPopulationofCountry Turkey Zone:5
+getPopulationofCountry Uganda Zone:3
+getPopulationofCountry Canada Zone:5
+getPopulationofCountry Canada Zone:5
+getPopulationofCountry Nepal Zone:2
+getPopulationofCountry Slovakia Zone:5
+getPopulationofCountry Slovakia Zone:5
+getPopulationofCountry Slovakia Zone:5
+getPopulationofCountry Netherlands Zone:4
+getPopulationofCountry Belgium Zone:2
+getPopulationofCountry Belgium Zone:2
+getPopulationofCountry Serbia Zone:5
+getPopulationofCountry Philippines Zone:1
+getPopulationofCountry Bolivia Zone:1
+getPopulationofCountry Equatorial Guinea Zone:4
+getPopulationofCountry Equatorial Guinea Zone:4
+getPopulationofCountry Equatorial Guinea Zone:4
+getPopulationofCountry Equatorial Guinea Zone:4
+getPopulationofCountry Sweden Zone:4
+getPopulationofCountry United Kingdom Zone:3
+getPopulationofCountry Nepal Zone:3
+getPopulationofCountry Equatorial Guinea Zone:5
+getPopulationofCountry Equatorial Guinea Zone:5
+getPopulationofCountry Honduras Zone:3
+getPopulationofCountry Belarus Zone:4
+getPopulationofCountry Belarus Zone:4
+getPopulationofCountry Belarus Zone:4
+getPopulationofCountry United States Zone:5
+getPopulationofCountry Netherlands Zone:4
+getPopulationofCountry Netherlands Zone:4
+getPopulationofCountry Togo Zone:1
+getPopulationofCountry Suriname Zone:5
+getPopulationofCountry Guatemala Zone:5
+getPopulationofCountry Brazil Zone:2
+getPopulationofCountry Brazil Zone:2
+getPopulationofCountry Brazil Zone:2
+getPopulationofCountry Brazil Zone:2
+getPopulationofCountry Indonesia Zone:2
+getPopulationofCountry Panama Zone:1
+getPopulationofCountry Paraguay Zone:3
+getPopulationofCountry Norway Zone:5
+getPopulationofCountry Norway Zone:5
+getPopulationofCountry Slovenia Zone:1
+getPopulationofCountry Kyrgyzstan Zone:2
+getPopulationofCountry Kyrgyzstan Zone:2
+getPopulationofCountry Kyrgyzstan Zone:2
+getPopulationofCountry Guam Zone:5
+getPopulationofCountry Ireland Zone:3
+getPopulationofCountry Ireland Zone:3
+getPopulationofCountry Guyana Zone:2
+getNumberofCities Tokelau 86282 Zone:2
+getNumberofCities Tokelau 86282 Zone:2
+getNumberofCities Ireland 15357 Zone:3
+getNumberofCities Japan 35776 Zone:5
+getNumberofCities Japan 35776 Zone:5
+getNumberofCities Kenya 10116 Zone:2
+getNumberofCities Pakistan 21858 Zone:5
+getNumberofCities United Kingdom 17590 Zone:2
+getNumberofCities Philippines 26860 Zone:3
+getNumberofCities Philippines 26860 Zone:3
+getNumberofCities Philippines 26860 Zone:3
+getNumberofCities Philippines 26860 Zone:3
+getNumberofCities Cameroon 49172 Zone:3
+getNumberofCities Croatia 29650 Zone:3
+getNumberofCities Norway 97512 Zone:5
+getNumberofCities Kuwait 81013 Zone:5
+getNumberofCities Kuwait 81013 Zone:5
+getNumberofCities Chad 95635 Zone:2
+getNumberofCities Tunisia 75720 Zone:5
+getNumberofCities Tunisia 75720 Zone:5
+getNumberofCities Tunisia 75720 Zone:5
+getNumberofCities Guam 16010 Zone:1
+getNumberofCountries 16 17136 71980  Zone:5
+getNumberofCountries 16 17136 71980  Zone:5
+getNumberofCountries 32 68523 163219  Zone:4
+getNumberofCountries 40 59399 105732  Zone:4
+getNumberofCountries 38 67728 135271  Zone:1
+getNumberofCountries 4 26295 32725  Zone:1
+getNumberofCountries 4 26295 32725  Zone:1
+getNumberofCountries 35 94789 129232  Zone:2
+getNumberofCountries 47 70908 89920  Zone:4
+getNumberofCountries 47 70908 89920  Zone:4
+getNumberofCountries 47 70908 89920  Zone:4
+getNumberofCountries 18 82502 166121  Zone:1
+getNumberofCountries 26 36349 85074  Zone:5
+getNumberofCountries 26 36349 85074  Zone:5
+getNumberofCountries 41 99830 129236  Zone:5
+getNumberofCountries 26 108363 151844  Zone:2
+getNumberofCountries 20 88451 159264  Zone:1
+getNumberofCountries 23 53247 109979  Zone:5
+getNumberofCountries 23 53247 109979  Zone:5
+getNumberofCountries 23 53247 109979  Zone:5
+getNumberofCountries 23 53247 109979  Zone:5
+getNumberofCountries 9 29156 73705  Zone:4
+getNumberofCountries 31 28545 48490  Zone:1
+getNumberofCountries 37 59132 141719  Zone:5
+getNumberofCountries 46 24893 78637  Zone:3
+getNumberofCountries 46 24893 78637  Zone:3
+getNumberofCountries 45 109430 135643  Zone:2
+getNumberofCountries 42 48717 74733  Zone:2
+getNumberofCountries 42 48717 74733  Zone:2
+getNumberofCountries 42 48717 74733  Zone:2
+getNumberofCountries 35 55848 73143  Zone:1
+getNumberofCountries 11 40468 87521  Zone:3
+getNumberofCountries 11 40468 87521  Zone:3

@@ -7,47 +7,66 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Logger;
 
+import org.group5.common.ComputationCache;
+import org.group5.common.LoggerConfig;
 import org.group5.proxy.ProxyServerInterface;
 
 public class Server extends UnicastRemoteObject implements ServerInterface
 {
-    private final BlockingQueue<Request> requestQueue; //needs zone number somewhere in here
-    private final Thread requestHandlerThread;
+    private static final Logger logger = LoggerConfig.getSimpleLogger(Server.class);
+    private static final int CACHE_SIZE = 150;
+    private final BlockingQueue<Request> requestQueue;
     private static final String csv_path = "src/main/resources/dataset/exercise_1_dataset.csv";
-    private int zone; //will be assigned by proxy server
-    private String name; //Assigned on instantiation
-    private int port; //Assigned on instantiation
-    //Registry registry;
+    private final int zone;
     
-    //Constructor that gets zone number from proxy and creates queue for requests
-    protected Server(String name, int port) throws RemoteException
+    // Configuration flags
+    private static boolean cacheEnabled = false;
+    //    private static boolean useLRU = false;
+    
+    // Server-side cache
+    private final ComputationCache serverCache;
+    
+    // Map to store futures for request results
+    private final Map<String, CompletableFuture<Object>> resultFutures = new ConcurrentHashMap<>();
+    
+    protected Server(String name, int port, boolean cache, boolean lru) throws RemoteException
     {
         super();
-        this.name = name;
-        this.port = port;
-        //this.registry = registry;
-        //this.zone = zone;
+        
+        if (cache)
+        {
+            cacheEnabled = true;
+            serverCache = new ComputationCache(CACHE_SIZE, lru, name, logger);
+        }
+        else
+        {
+            serverCache = null;
+        }
+        
         this.requestQueue = new LinkedBlockingQueue<>();
         
-        //connect to proxy and get zone number
-        // connect to proxy and get zone number
+        // Connect to proxy and get zone number
         try
         {
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);
             ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
             
             // Assign a zone from proxy
-            this.zone = proxy.assignZoneNumber(name);
+            zone = proxy.assignZoneNumber(name);
             
             // Bind server object in registry under servers name
             registry.rebind(name, this);
             
-            // Register server info with proxy so it appears in status
+            // Register server info with proxy
             org.group5.proxy.ServerInfo serverInfo =
-                    new org.group5.proxy.ServerInfo(name, name, this.zone, "localhost", port);
+                    new org.group5.proxy.ServerInfo(name, name, zone, "localhost", port);
             proxy.registerServer(serverInfo);
             
             System.out.println("Assigned zone number: " + zone + " for server " + name);
@@ -57,45 +76,144 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to register with proxy", e);
         }
         
-        //Start thread to handle execution of requests from queue
-        this.requestHandlerThread = new Thread(new RequestHandler());
-        this.requestHandlerThread.start();
+        // Start thread to handle execution of requests from queue
+        Thread requestHandlerThread = new Thread(new RequestHandler());
+        requestHandlerThread.start();
     }
     
-    //Simulating latency before adding request to queue
-    public synchronized void addRequest(Request request)
+    public static void main(String[] args)
     {
+        parseCommandLineArgs(args);
+    }
+    
+    // Simulating latency before adding request to queue
+    private synchronized CompletableFuture<Object> addRequest(Request request)
+    {
+        String requestId = UUID.randomUUID().toString();
+        request.setRequestId(requestId);
+        
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        resultFutures.put(requestId, future);
+        
         try
         {
             int clientZone = request.getClientZone();
-            if (zone != clientZone) {
-                //increase latency based on client zone
-                Thread.sleep(80+ (30 * clientZone));
-        }   else{
-                //standard latency 80ms when client and server in same zone
+            if (zone != clientZone)
+            {
+                // increase latency based on client zone
+                long latency = 80 + 30L * clientZone;
+                //                logger.info("Request from different zone, sleeping for " + latency + "ms");
+                Thread.sleep(latency);
+            }
+            else
+            {
+                // standard latency 80ms when client and server in same zone
+                //                logger.info("Request from same zone, sleeping for 80ms");
                 Thread.sleep(80);
-        }
+            }
             requestQueue.put(request);
         }
         catch (InterruptedException e)
         {
             Thread.currentThread().interrupt();
-            System.err.println("Failed to add request to queue: " + e.getMessage());
+            future.completeExceptionally(new RemoteException("Failed to add request to queue", e));
+        }
+        
+        return future;
+    }
+    
+    @Override
+    public long getPopulationofCountry(String countryName, int clientZone) throws RemoteException
+    {
+        Request request = new Request("getPopulationofCountry", countryName, clientZone);
+        
+        try
+        {
+            CompletableFuture<Object> future = addRequest(request);
+            // This blocks until the request handler processes the request
+            return (Long) future.get();
+        }
+        catch (Exception e)
+        {
+            throw new RemoteException("Failed to process request", e);
         }
     }
     
-    //Thread that takes request from queue and executes
+    @Override
+    public int getNumberofCities(String countryName, long threshold, int clientZone) throws RemoteException
+    {
+        Request request = new Request("getNumberofCities", countryName, threshold, clientZone);
+        
+        try
+        {
+            CompletableFuture<Object> future = addRequest(request);
+            return (Integer) future.get();
+        }
+        catch (Exception e)
+        {
+            throw new RemoteException("Failed to process request", e);
+        }
+    }
+    
+    @Override
+    public int getNumberofCountries(int citycount, long threshold, int clientZone) throws RemoteException
+    {
+        Request request = new Request("getNumberofCountries", citycount, threshold, clientZone);
+        
+        try
+        {
+            CompletableFuture<Object> future = addRequest(request);
+            return (Integer) future.get();
+        }
+        catch (Exception e)
+        {
+            throw new RemoteException("Failed to process request", e);
+        }
+    }
+    
+    @Override
+    public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation, int clientZone) throws RemoteException
+    {
+        Request request = new Request("getNumberofCountriesMM", citycount, minpopulation, maxpopulation, clientZone);
+        try
+        {
+            CompletableFuture<Object> future = addRequest(request);
+            return (Integer) future.get();
+        }
+        catch (Exception e)
+        {
+            throw new RemoteException("Failed to process request", e);
+        }
+    }
+    
+    @Override
+    public int queueSize() throws RemoteException
+    {
+        return requestQueue.size();
+    }
+    
+    // Helper method to generate cache key from request
+    private String generateCacheKey(Request request)
+    {
+        StringBuilder keyBuilder = new StringBuilder(request.getMethodName());
+        for (Object arg : request.getArgs())
+        {
+            keyBuilder.append("_").append(arg.toString());
+        }
+        return keyBuilder.toString();
+    }
+    
+    // Thread that takes request from queue and executes
     private class RequestHandler implements Runnable
     {
         @Override
         public void run()
         {
-            while (true)
+            while (!Thread.currentThread().isInterrupted())
             {
                 try
                 {
-                    //Take from queue and process
-                    Request request = requestQueue.take(); //add latency simulation
+                    Request request = requestQueue.take();
                     processRequest(request);
                 }
                 catch (InterruptedException e)
@@ -107,54 +225,111 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         }
     }
     
-    //method that gets method name and arguments from client request
-    //method name is taken out first, so first argument refers to argument after method name
+    // Method that gets method name and arguments from client request
+    // Method name is taken out first, so first argument refers to argument after method name
     private void processRequest(Request request)
     {
+        String requestId = request.getRequestId();
+        CompletableFuture<Object> future = resultFutures.remove(requestId);
+        
+        if (future == null)
+        {
+            System.err.println("No future found for request: " + requestId);
+            return;
+        }
         try
         {
-            switch (request.getMethodName())
+            Object result = null;
+            
+            // Generate cache key for this request
+            String cacheKey = generateCacheKey(request);
+            
+            // Check cache first if enabled
+            if (cacheEnabled && serverCache != null)
             {
-                case "getPopulationofCountry":
-                    String countryName = (String) request.getArgs()[0];
-                    long population = getPopulationofCountry(countryName);
-                    System.out.println("Population of " + countryName + ": " + population);
-                    break;
-                case "getNumberofCities":
-                    String countryNameCities = (String) request.getArgs()[0];
-                    long threshold = (Long) request.getArgs()[1];
-                    int cityCount = getNumberofCities(countryNameCities, threshold);
-                    System.out.println("Number of cities in " + countryNameCities + " with population >= " + threshold + ": " + cityCount);
-                    break;
-                case "getNumberofCountries":
-                    int reqCityCount = (Integer) request.getArgs()[0];
-                    long populationThreshold = (Long) request.getArgs()[1];
-                    int countryCount = getNumberofCountries(reqCityCount, populationThreshold);
-                    System.out.println("Number of countries with at least " + reqCityCount + " cities with population" +
-                            " >= " + populationThreshold + ": " + countryCount);
-                    break;
-                case "getNumberofCountriesMM":
-                    int cityCountThreshold = (Integer) request.getArgs()[0];
-                    long minPopulation = (Long) request.getArgs()[1];
-                    long maxPopulation = (Long) request.getArgs()[2];
-                    int countriesMMCount = getNumberofCountriesMM(cityCountThreshold, minPopulation, maxPopulation);
-                    System.out.println("Number of countries with at least " + cityCountThreshold + " cities with " +
-                            "population between " + minPopulation + " and " + maxPopulation + ": " + countriesMMCount);
-                    break;
-                default:
-                    System.out.println("Method must be listed in Server Interface");
+                String cachedResult = serverCache.get(cacheKey);
+                if (cachedResult != null)
+                {
+                    // Parse cached result back to appropriate type
+                    result = parseCachedResult(request.getMethodName(), cachedResult);
+                }
             }
+            // If not in cache, compute the result
+            if (result == null)
+            {
+                switch (request.getMethodName())
+                {
+                    case "getPopulationofCountry":
+                        String countryName = (String) request.getArgs()[0];
+                        result = calculatePopulationofCountry(countryName);
+                        System.out.println("Population of " + countryName + ": " + result);
+                        break;
+                    
+                    case "getNumberofCities":
+                        String countryNameCities = (String) request.getArgs()[0];
+                        long threshold = (Long) request.getArgs()[1];
+                        result = calculateNumberofCities(countryNameCities, threshold);
+                        System.out.println("Number of cities in " + countryNameCities +
+                                " with population >= " + threshold + ": " + result);
+                        break;
+                    
+                    case "getNumberofCountries":
+                        int reqCityCount = (Integer) request.getArgs()[0];
+                        long populationThreshold = (Long) request.getArgs()[1];
+                        result = calculateNumberofCountries(reqCityCount, populationThreshold);
+                        System.out.println("Number of countries with at least " + reqCityCount +
+                                " cities with population >= " + populationThreshold + ": " + result);
+                        break;
+                    
+                    case "getNumberofCountriesMM":
+                        int cityCountThreshold = (Integer) request.getArgs()[0];
+                        long minPopulation = (Long) request.getArgs()[1];
+                        long maxPopulation = (Long) request.getArgs()[2];
+                        result = calculateNumberofCountriesMM(cityCountThreshold, minPopulation, maxPopulation);
+                        System.out.println("Number of countries with at least " + cityCountThreshold +
+                                " cities with population between " + minPopulation +
+                                " and " + maxPopulation + ": " + result);
+                        break;
+                    
+                    default:
+                        future.completeExceptionally(
+                                new IllegalArgumentException("Unknown method: " + request.getMethodName()));
+                        return;
+                }
+                // Store result in cache if enabled
+                if (cacheEnabled && serverCache != null)
+                {
+                    serverCache.put(cacheKey, result.toString());
+                }
+            }
+            future.complete(result);
         }
         catch (Exception e)
         {
+            future.completeExceptionally(e);
             e.printStackTrace();
         }
     }
     
-    @Override
-    public long getPopulationofCountry(String countryName) throws RemoteException
+    // Helper method to parse cached string result back to appropriate type
+    private Object parseCachedResult(String methodName, String cachedValue)
     {
-        //cache check here
+        switch (methodName)
+        {
+            case "getPopulationofCountry":
+                return Long.parseLong(cachedValue);
+            case "getNumberofCities":
+            case "getNumberofCountries":
+            case "getNumberofCountriesMM":
+                return Integer.parseInt(cachedValue);
+            default:
+                throw new IllegalArgumentException("Unknown method: " + methodName);
+        }
+    }
+    
+    // Private methods that do the actual calculations
+    private long calculatePopulationofCountry(String countryName)
+    {
         long population = 0;
         try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
         {
@@ -162,7 +337,6 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             while ((line = br.readLine()) != null)
             {
                 String[] fields = line.split(";");
-                //field 3 = country name, field 4 = population
                 if (fields.length > 4 && fields[3].equalsIgnoreCase(countryName))
                 {
                     population += Long.parseLong(fields[4]);
@@ -176,8 +350,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         return population;
     }
     
-    @Override //minimum threshold
-    public int getNumberofCities(String countryName, long threshold) throws RemoteException
+    private int calculateNumberofCities(String countryName, long threshold)
     {
         int cityCount = 0;
         try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
@@ -186,7 +359,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             while ((line = br.readLine()) != null)
             {
                 String[] fields = line.split(";");
-                if (fields.length > 4 && fields[3].equalsIgnoreCase(countryName) && Long.parseLong(fields[4]) >= threshold)
+                if (fields.length > 4 && fields[3].equalsIgnoreCase(countryName)
+                        && Long.parseLong(fields[4]) >= threshold)
                 {
                     cityCount++;
                 }
@@ -199,22 +373,20 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         return cityCount;
     }
     
-    @Override //minimum threshold
-    public int getNumberofCountries(int citycount, long threshold) throws RemoteException
+    private int calculateNumberofCountries(int citycount, long threshold)
     {
-        //Save cities above threshold per country in hashmap
         Map<String, Integer> citiesPerCountry = new HashMap<>();
-        //count cites above threshold for each country
+        
         try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
         {
             String line;
-            boolean firstLine = true; // Skip header row
+            boolean firstLine = true;
             while ((line = br.readLine()) != null)
             {
                 if (firstLine)
                 {
                     firstLine = false;
-                    continue; // Skip the header row
+                    continue;
                 }
                 String[] fields = line.split(";");
                 if (fields.length > 4)
@@ -225,7 +397,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                         if (population >= threshold)
                         {
                             String countryName = fields[3];
-                            citiesPerCountry.put(countryName, citiesPerCountry.getOrDefault(countryName, 0) + 1);
+                            citiesPerCountry.put(countryName,
+                                    citiesPerCountry.getOrDefault(countryName, 0) + 1);
                         }
                     }
                     catch (NumberFormatException ignored)
@@ -238,7 +411,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         {
             e.printStackTrace();
         }
-        //Count number of countries above threshold from dictionary/hashmap
+        
         int qualifyingCountries = 0;
         for (int count : citiesPerCountry.values())
         {
@@ -250,21 +423,20 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         return qualifyingCountries;
     }
     
-    @Override
-    public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation) throws RemoteException
+    private int calculateNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation)
     {
         Map<String, Integer> countryCities = new HashMap<>();
-        //count cities within population interval per country
+        
         try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
         {
             String line;
-            boolean firstLine = true; // Skip header row
+            boolean firstLine = true;
             while ((line = br.readLine()) != null)
             {
                 if (firstLine)
                 {
                     firstLine = false;
-                    continue; // Skip the header row
+                    continue;
                 }
                 String[] fields = line.split(";");
                 if (fields.length > 4)
@@ -275,7 +447,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                         String countryName = fields[3];
                         if (population >= minpopulation && population <= maxpopulation)
                         {
-                            countryCities.put(countryName, countryCities.getOrDefault(countryName, 0) + 1);
+                            countryCities.put(countryName,
+                                    countryCities.getOrDefault(countryName, 0) + 1);
                         }
                     }
                     catch (NumberFormatException ignored)
@@ -288,7 +461,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         {
             e.printStackTrace();
         }
-        //Count qualifying countries based on city count threshold
+        
         int qualifyingCountries = 0;
         for (int count : countryCities.values())
         {
@@ -300,9 +473,44 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         return qualifyingCountries;
     }
     
-    public int queueSize() throws RemoteException
+    private static void printUsage()
     {
-        return requestQueue.size();
+        System.out.println("Usage: java Server [OPTIONS]");
+        System.out.println("Options:");
+        System.out.println("  --enable-cache    Enable server-side caching (default: false)");
+        //        System.out.println("  --use-lru         Use LRU eviction policy instead of FIFO (default: false)");
+        System.out.println("  --help            Show this help message");
+        System.out.println();
+        System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");
     }
     
+    private static void parseCommandLineArgs(String[] args)
+    {
+        for (String arg : args)
+        {
+            switch (arg)
+            {
+                case "--enable-cache":
+                    cacheEnabled = true;
+                    logger.info("Cache enabled");
+                    break;
+                //                case "--use-lru":
+                //                    useLRU = true;
+                //                    logger.info("LRU cache policy selected");
+                //                    break;
+                case "--help":
+                    printUsage();
+                    System.exit(0);
+                    break;
+                default:
+                    if (arg.startsWith("--"))
+                    {
+                        System.err.println("Unknown flag: " + arg);
+                        printUsage();
+                        System.exit(1);
+                    }
+                    break;
+            }
+        }
+    }
 }
