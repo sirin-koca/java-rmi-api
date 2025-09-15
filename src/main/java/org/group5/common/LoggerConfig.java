@@ -1,4 +1,4 @@
-package com.ass1.common;
+package org.group5.common;
 
 import java.util.logging.Logger;
 import java.util.logging.ConsoleHandler;

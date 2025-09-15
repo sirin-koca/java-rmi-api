@@ -13,6 +13,7 @@ We will implement a distributed system using Java RMI, with following components
 - Docker containerization for deployment
 
 Objective: Measure and compare performance (latency, execution time, waiting time) across different setups.
+Toolchain: Java: Temurin 21.0.8, Maven 3x
 
 ### 2. Features
 - Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
