@@ -42,7 +42,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             // Assign a zone from proxy
             this.zone = proxy.assignZoneNumber(name);
             
-            // Bind server object in registry under its name
+            // Bind server object in registry under servers name
             registry.rebind(name, this);
             
             // Register server info with proxy so it appears in status
@@ -62,11 +62,19 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         this.requestHandlerThread.start();
     }
     
-    //Add request to queue
+    //Simulating latency before adding request to queue
     public synchronized void addRequest(Request request)
     {
         try
         {
+            int clientZone = request.getClientZone();
+            if (zone != clientZone) {
+                //increase latency based on client zone
+                Thread.sleep(80+ (30 * clientZone));
+        }   else{
+                //standard latency 80ms when client and server in same zone
+                Thread.sleep(80);
+        }
             requestQueue.put(request);
         }
         catch (InterruptedException e)
