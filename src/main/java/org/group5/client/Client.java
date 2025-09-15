@@ -61,42 +61,45 @@ public class Client
                         }
                         
                         String method = parts[0];
-                        String result = "";
+                        String result;
                         
-                        if (method.equals("getPopulationofCountry"))
+                        switch (method)
                         {
-                            // Join all parts after method as country name
-                            String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length));
-                            result = "Population=" + server.getPopulationofCountry(countryName);
-                            
-                        }
-                        else if (method.equals("getNumberofCities"))
-                        {
-                            long threshold = Long.parseLong(parts[parts.length - 1]);
-                            String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length - 1));
-                            result = "Cities=" + server.getNumberofCities(countryName, threshold);
-                            
-                        }
-                        else if (method.equals("getNumberofCountries"))
-                        {
-                            int cityCount = Integer.parseInt(parts[1]);
-                            long threshold = Long.parseLong(parts[2]);
-                            result = "Countries=" + server.getNumberofCountries(cityCount, threshold);
-                            
-                        }
-                        else if (method.equals("getNumberofCountriesMM"))
-                        {
-                            int cityCount = Integer.parseInt(parts[1]);
-                            long minPopulation = Long.parseLong(parts[2]);
-                            long maxPopulation = Long.parseLong(parts[3]);
-                            result = "Countries=" + server.getNumberofCountriesMM(cityCount, minPopulation,
-                                    maxPopulation);
-                            
-                        }
-                        else
-                        {
-                            System.err.println("Unknown method: " + method);
-                            return;
+                            case "getPopulationofCountry" ->
+                            {
+                                // Join all parts after method as country name
+                                String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length));
+                                result = "Population=" + server.getPopulationofCountry(countryName);
+                                
+                            }
+                            case "getNumberofCities" ->
+                            {
+                                long threshold = Long.parseLong(parts[parts.length - 1]);
+                                String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length - 1));
+                                result = "Cities=" + server.getNumberofCities(countryName, threshold);
+                                
+                            }
+                            case "getNumberofCountries" ->
+                            {
+                                int cityCount = Integer.parseInt(parts[1]);
+                                long threshold = Long.parseLong(parts[2]);
+                                result = "Countries=" + server.getNumberofCountries(cityCount, threshold);
+                                
+                            }
+                            case "getNumberofCountriesMM" ->
+                            {
+                                int cityCount = Integer.parseInt(parts[1]);
+                                long minPopulation = Long.parseLong(parts[2]);
+                                long maxPopulation = Long.parseLong(parts[3]);
+                                result = "Countries=" + server.getNumberofCountriesMM(cityCount, minPopulation,
+                                        maxPopulation);
+                                
+                            }
+                            default ->
+                            {
+                                System.err.println("Unknown method: " + method);
+                                return;
+                            }
                         }
                         
                         synchronized (writer)
@@ -109,7 +112,7 @@ public class Client
                     {
                         e.printStackTrace();
                     }
-                }, delay * currentIndex, TimeUnit.MILLISECONDS);
+                }, (long) delay * currentIndex, TimeUnit.MILLISECONDS);
             }
         }
         
