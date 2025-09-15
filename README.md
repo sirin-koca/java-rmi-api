@@ -16,14 +16,10 @@ Objective: Measure and compare performance (latency, execution time, waiting tim
 Toolchain: Java: Temurin 21.0.8, Maven 3x
 
 ### 2. Features
-
 - Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
 - Servers: Handle statistical queries, queues, and simulate network latency.
 - Client: Parses query files, executes remote calls, and collects performance metrics.
-- Caching:
-  - Naïve (no cache)
-  - Server-side cache (FIFO / LRU)
-  - Client-side cache
+- Caching methods
 - Dockerized Deployment: Servers containerized for reproducibility.
 - Graphs & Logs: Visualize turnaround time, execution time, waiting time, and server queue length.
 
@@ -55,12 +51,15 @@ _(How to build (Maven), how to run Proxy, Servers, Client etc.) - mention Docker
 
 ### 8. Workload Distribution
 _How the group collaborates, who is responsible for what etc._
+1) Mariam:  Client & Proxy
+2) Martta: Server & Queue
+3) Staal: Caching
+4) Sirin: Dockerize
 
 ### 9. Deliverables
 _What will be submitted: code, Docker images, report, graphs, output files etc._
 
 ## About Java RMI
-
 Java Remote Method Invocation (RMI) allows distributed Java applications to call methods on remote objects running in other 
 JVMs, possibly on different hosts. It uses object serialization to transfer data and fully supports polymorphism across the network.
 

@@ -10,6 +10,7 @@ package org.group5;
 public class Main {
     public static void main(String[] args) {
         // Test "Hello RMI World!".
+        // "Hello RMI World!".
         System.out.println("Hello RMI World!");
 
     }
