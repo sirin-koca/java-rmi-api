@@ -10,6 +10,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.group5.common.ComputationCache;
 import org.group5.common.LoggerConfig;
@@ -100,6 +102,17 @@ public class Client {
         parseCommandLineArgs(args);
         initializeCache();
 
+        class Stats {
+            long totalTurnaround = 0;
+            long totalExec = 0;
+            long totalWait = 0;
+            long minTurnaround = Long.MAX_VALUE;
+            long maxTurnaround = Long.MIN_VALUE;
+            int count = 0;
+        }
+
+        Map<String, Stats> methodStats = new HashMap<>();
+
         String inputFile = "src/main/resources/input/exercise_1_input.txt";
         String outputFile;
         switch (mode) {
@@ -174,19 +187,39 @@ public class Client {
                             turnaround = endTurnaround - startTurnaround;
                             waitTime = turnaround - execTime;
 
-                            //Only log server zone if we really contacted a server
+                            // Only log server zone if we really contacted a server
                             writer.write(result + " " + query +
                                     " (turnaround time: " + turnaround +
                                     " ms, execution time: " + execTime +
                                     " ms, waiting time: " + waitTime +
                                     " ms, processed by Server " + serverInfo.getZone() + ")\n");
+
+
+                            Stats stats = methodStats.computeIfAbsent(method, k -> new Stats());
+                            stats.totalTurnaround += turnaround;
+                            stats.totalExec += execTime;
+                            stats.totalWait += waitTime;
+                            stats.count++;
+                            stats.minTurnaround = Math.min(stats.minTurnaround, turnaround);
+                            stats.maxTurnaround = Math.max(stats.maxTurnaround, turnaround);
+                            
                         } else {
-                            //Cache hit - processed by CLIENT-CACHE
+                            // Cache hit - processed by CLIENT-CACHE
                             writer.write(result + " " + query +
                                     " (turnaround time: " + turnaround +
                                     " ms, execution time: " + execTime +
                                     " ms, waiting time: " + waitTime +
                                     " ms, processed by CLIENT-CACHE)\n");
+
+                            // Update stats for this method
+                            Stats stats = methodStats.computeIfAbsent(method, k -> new Stats());
+                            stats.totalTurnaround += turnaround;
+                            stats.totalExec += execTime;
+                            stats.totalWait += waitTime;
+                            stats.count++;
+                            stats.minTurnaround = Math.min(stats.minTurnaround, turnaround);
+                            stats.maxTurnaround = Math.max(stats.maxTurnaround, turnaround);
+
                         }
 
                     } catch (Exception e) {
@@ -208,6 +241,22 @@ public class Client {
             scheduler.shutdownNow();
             Thread.currentThread().interrupt();
         } finally {
+
+            // Summary entries
+            for (Map.Entry<String, Stats> entry : methodStats.entrySet()) {
+                String m = entry.getKey();
+                Stats s = entry.getValue();
+                long avgTurnaround = s.count > 0 ? s.totalTurnaround / s.count : 0;
+                long avgExec = s.count > 0 ? s.totalExec / s.count : 0;
+                long avgWait = s.count > 0 ? s.totalWait / s.count : 0;
+
+                writer.write(m + " avg turn-around time: " + avgTurnaround +
+                        " ms, avg execution time: " + avgExec +
+                        " ms, avg waiting time: " + avgWait +
+                        " ms, min turn-around time: " + s.minTurnaround +
+                        " ms, max turn-around time: " + s.maxTurnaround + " ms\n");
+            }
+
             // Close the writer only after all tasks have completed
             writer.close();
         }
@@ -241,16 +290,16 @@ public class Client {
                     if (i + 1 < args.length) {
                         mode = args[++i].toLowerCase();
                         logger.info("Run mode set to " + mode);
-                        //Configure cache based on mode
+                        // Configure cache based on mode
                         switch (mode) {
                             case "naive":
-                                cacheEnabled = false; 
+                                cacheEnabled = false;
                                 break;
                             case "server-cache":
-                                cacheEnabled = false; 
+                                cacheEnabled = false;
                                 break;
                             case "client-cache":
-                                cacheEnabled = true; 
+                                cacheEnabled = true;
                                 break;
                             default:
                                 System.err.println("Unknown mode: " + mode);
