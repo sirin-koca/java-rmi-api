@@ -28,17 +28,17 @@ public class Client
     private static boolean useLRU = false;
     
     // Client-side cache
-    private static ComputationCache cache;
+    private static ComputationCache clientCache;
     
     private static void initializeCache()
     {
         if (cacheEnabled)
         {
-            cache = new ComputationCache(CACHE_SIZE, useLRU, "Client", logger);
+            clientCache = new ComputationCache(CACHE_SIZE, useLRU, "Client", logger);
         }
         else
         {
-            cache = null;
+            clientCache = null;
         }
     }
     
@@ -59,15 +59,13 @@ public class Client
                                            String method, String[] parts) throws Exception
     {
         // Check cache if enabled
-        if (cacheEnabled && cache != null)
+        if (cacheEnabled && clientCache != null)
         {
-            String cachedResult = cache.get(cacheKey);
+            String cachedResult = clientCache.get(cacheKey);
             if (cachedResult != null)
             {
-                logger.info("Cache HIT for key: " + cacheKey);
                 return cachedResult;
             }
-            logger.info("Cache MISS for key: " + cacheKey);
         }
         
         // Execute the actual server call
@@ -105,10 +103,9 @@ public class Client
         }
         
         // Store in cache if enabled
-        if (cacheEnabled && cache != null)
+        if (cacheEnabled && clientCache != null)
         {
-            cache.put(cacheKey, result);
-            logger.info("Cached result for key: " + cacheKey);
+            clientCache.put(cacheKey, result);
         }
         
         return result;
@@ -117,7 +114,7 @@ public class Client
     public static void main(String[] args) throws Exception
     {
         parseCommandLineArgs(args);
-        initializeCache(); // Initialize cache after parsing args
+        initializeCache();
         
         String inputFile = "src/main/resources/dataset/exercise_1_input.txt";
         String outputFile = "src/main/resources/dataset/exercise_1_output.txt";
@@ -164,12 +161,11 @@ public class Client
                         String cacheKey = generateCacheKey(method, parts);
                         
                         // Check cache first if enabled
-                        if (cacheEnabled && cache != null)
+                        if (cacheEnabled && clientCache != null)
                         {
-                            result = cache.get(cacheKey);
+                            result = clientCache.get(cacheKey);
                             if (result != null)
                             {
-                                logger.info("Cache HIT for query: " + query);
                                 serverURL = "CLIENT-CACHE";
                             }
                         }
