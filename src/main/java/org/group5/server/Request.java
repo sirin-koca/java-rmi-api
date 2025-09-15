@@ -5,8 +5,8 @@ import java.io.Serializable;
 //Own Request class to allow encapsulation of client requests into queue
 public class Request implements Serializable
 {
-    private String methodName;
-    private Object[] args;
+    private final String methodName;
+    private final Object[] args;
     private String requestId;
     
     // Constructor with variable arguments
