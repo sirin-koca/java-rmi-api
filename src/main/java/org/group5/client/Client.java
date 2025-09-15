@@ -157,20 +157,20 @@ public class Client
                         
                         String method = parts[0];
                         
+                        String result = null;
+                        String serverURL = null;
+                        
                         // Generate cache key (zone-independent)
                         String cacheKey = generateCacheKey(method, parts);
                         
                         // Check cache first if enabled
-                        String result = null;
-                        String serverURL = null;
-                        
                         if (cacheEnabled && cache != null)
                         {
                             result = cache.get(cacheKey);
                             if (result != null)
                             {
                                 logger.info("Cache HIT for query: " + query);
-                                serverURL = "CACHE";
+                                serverURL = "CLIENT-CACHE";
                             }
                         }
                         
