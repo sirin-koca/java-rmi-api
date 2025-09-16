@@ -70,7 +70,7 @@ public class Client {
                 result = "Population=" + server.getPopulationofCountry(countryName, zone);
             }
             case "getNumberofCities" -> {
-                long threshold = Long.parseLong(parts[parts.length - 1]);
+                long threshold = Long.parseLong(parts[parts.length - 2]);
                 String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length - 1));
                 result = "Cities=" + server.getNumberofCities(countryName, threshold, zone);
             }
