@@ -116,9 +116,9 @@ public class Client {
         String inputFile = "src/main/resources/input/exercise_1_input.txt";
         String outputFile;
         switch (mode) {
-            case "naive" -> outputFile = "src/main/resources/output/output_naive.txt";
-            case "server-cache" -> outputFile = "src/main/resources/output/output_server-cache.txt";
-            case "client-cache" -> outputFile = "src/main/resources/output/output_client-cache.txt";
+            case "naive" -> outputFile = "src/main/resources/output/naive_server.txt";
+            case "server-cache" -> outputFile = "src/main/resources/output/server_cache.txt";
+            case "client-cache" -> outputFile = "src/main/resources/output/client_cache.txt";
             default -> throw new IllegalArgumentException("Unknown mode: " + mode);
         }
 
