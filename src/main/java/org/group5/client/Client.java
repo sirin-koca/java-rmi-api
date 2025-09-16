@@ -67,8 +67,24 @@ public class Client {
                 result = "Population=" + server.getPopulationofCountry(countryName, zone);
             }
             case "getNumberofCities" -> {
-                long threshold = Long.parseLong(parts[parts.length - 2]);
-                String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, parts.length - 1));
+                // Find where the numeric threshold is
+                int thresholdIndex = -1;
+                for (int i = parts.length - 1; i >= 1; i--) {
+                    try {
+                        Long.parseLong(parts[i]);
+                        thresholdIndex = i;
+                        break;
+                    } catch (NumberFormatException e) {
+                        // Continue searching
+                    }
+                }
+                
+                if (thresholdIndex == -1) {
+                    throw new IllegalArgumentException("No valid threshold found in query");
+                }
+                
+                long threshold = Long.parseLong(parts[thresholdIndex]);
+                String countryName = String.join(" ", Arrays.copyOfRange(parts, 1, thresholdIndex));
                 result = "Cities=" + server.getNumberofCities(countryName, threshold, zone);
             }
             case "getNumberofCountries" -> {
