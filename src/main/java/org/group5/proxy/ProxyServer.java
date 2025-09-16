@@ -70,8 +70,6 @@ public class ProxyServer implements ProxyServerInterface
     @Override
     public ServerInfo requestProcessingServer(int zone) throws RemoteException
     {
-        logger.info("Received request for processing server in zone " + zone);
-        
         // First try to find a server in the exact zone
         ServerInfo server = findServerInZone(zone);
         if (server != null && !isServerOverloaded(server.getServerId()))
