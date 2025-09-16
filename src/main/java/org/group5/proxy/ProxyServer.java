@@ -9,22 +9,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.util.*;
+import java.util.concurrent.*;
 
 import org.group5.common.LoggerConfig;
 import org.group5.server.ServerInterface;
-
-import java.util.logging.Level;
-
-import java.rmi.AlreadyBoundException;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class ProxyServer implements ProxyServerInterface
 {
@@ -74,7 +64,7 @@ public class ProxyServer implements ProxyServerInterface
         ServerInfo server = findServerInZone(zone);
         if (server != null && !isServerOverloaded(server.getServerId()))
         {
-            logger.info("Found non-overloaded server in exact zone " + zone + ": " + server.getServerId());
+//            logger.info("Found non-overloaded server in exact zone " + zone + ": " + server.getServerId());
             incrementAndCheckUpdateNeeded(server.getServerId());
             return server;
         }
@@ -83,9 +73,9 @@ public class ProxyServer implements ProxyServerInterface
         ServerInfo leastLoadedServer = findLeastLoadedServer(zone);
         if (leastLoadedServer != null)
         {
-            logger.info("Found least loaded server for zone " + zone + " in zone " +
-                    leastLoadedServer.getZone() + ": " + leastLoadedServer.getServerId() +
-                    " with queue size: " + serverQueueSizes.get(leastLoadedServer.getServerId()));
+//            logger.info("Found least loaded server for zone " + zone + " in zone " +
+//                    leastLoadedServer.getZone() + ": " + leastLoadedServer.getServerId() +
+//                    " with queue size: " + serverQueueSizes.get(leastLoadedServer.getServerId()));
             incrementAndCheckUpdateNeeded(leastLoadedServer.getServerId());
             return leastLoadedServer;
         }
@@ -93,13 +83,13 @@ public class ProxyServer implements ProxyServerInterface
         // If all servers are overloaded, return the server in the same zone if it exists
         if (server != null)
         {
-            logger.info("All servers overloaded, returning server in same zone: " + server.getServerId());
+//            logger.info("All servers overloaded, returning server in same zone: " + server.getServerId());
             incrementAndCheckUpdateNeeded(server.getServerId());
             return server;
         }
         
         // No servers available
-        logger.warning("No servers available for zone " + zone);
+//        logger.warning("No servers available for zone " + zone);
         throw new RemoteException("No processing servers available");
     }
     
