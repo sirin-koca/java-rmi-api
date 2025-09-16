@@ -135,7 +135,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                     e.printStackTrace();
                 }
             }
-        }, 0, 10, TimeUnit.SECONDS);
+        }, 0, 2, TimeUnit.SECONDS);
     }
     //Method that logs the current queue size with a timestamp to a file with the server zone in the file name
     private void logQueueSizeToFile() throws IOException {
@@ -255,6 +255,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             {
                 try
                 {
+//                    Thread.sleep(300);
                     Request request = requestQueue.take();
                     processRequest(request);
                 }
