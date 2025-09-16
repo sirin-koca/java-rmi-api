@@ -8,10 +8,7 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 import org.group5.common.ComputationCache;
@@ -25,6 +22,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     private final BlockingQueue<Request> requestQueue;
     private static final String csv_path = "src/main/resources/dataset/exercise_1_dataset.csv";
     private final int zone;
+
+    //Logging thread for writing queue size at intervals to server log file
+    private ScheduledExecutorService scheduler;
     
     // Configuration flags
     private static boolean cacheEnabled = false;
@@ -51,6 +51,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         }
         
         this.requestQueue = new LinkedBlockingQueue<>();
+        //Start the logging thread
+        startQueueSizeLogger();
         
         // Connect to proxy and get zone number
         try
@@ -121,12 +123,57 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         
         return future;
     }
-    
+    //Start logging the queue size to a file every 10 seconds
+    private void startQueueSizeLogger(){
+        scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    logQueueSizeToFile();
+                }catch (IOException e){
+                    e.printStackTrace();
+                }
+            }
+        }, 0, 10, TimeUnit.SECONDS);
+    }
+    //Method that logs the current queue size with a timestamp to a file with the server zone in the file name
+    private void logQueueSizeToFile() throws IOException {
+        String logFilePath = "src/main/resources/serverLogFiles" + zone + ".txt";
+        int currentQueueSize = queueSize();
+        String timestamp = new java.util.Date().toString();
+
+        //Write queue size and timestamp to the file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(logFilePath, true))){
+            writer.write("Timestamp: " + timestamp + ", Queue Size: " + currentQueueSize);
+            writer.newLine();
+        }
+    }
+    //Get size of queue for server and proxy server use
+    @Override
+    public int queueSize() throws RemoteException
+    {
+        return requestQueue.size();
+    }
+    //Shut down scheduler when server is done
+    public void shutdownServerLogger(){
+        if (scheduler != null){
+            scheduler.shutdown();
+            try {
+                if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)){
+                    scheduler.shutdownNow();
+                }
+            }catch (InterruptedException e){
+                scheduler.shutdownNow();
+            }
+        }
+    }
+
     @Override
     public long getPopulationofCountry(String countryName, int clientZone) throws RemoteException
     {
         Request request = new Request("getPopulationofCountry", countryName, clientZone);
-        
+
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -138,12 +185,12 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-    
+
     @Override
     public int getNumberofCities(String countryName, long threshold, int clientZone) throws RemoteException
     {
         Request request = new Request("getNumberofCities", countryName, threshold, clientZone);
-        
+
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -154,12 +201,12 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-    
+
     @Override
     public int getNumberofCountries(int citycount, long threshold, int clientZone) throws RemoteException
     {
         Request request = new Request("getNumberofCountries", citycount, threshold, clientZone);
-        
+
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -170,7 +217,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-    
+
     @Override
     public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation, int clientZone) throws RemoteException
     {
@@ -185,13 +232,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-    
-    @Override
-    public int queueSize() throws RemoteException
-    {
-        return requestQueue.size();
-    }
-    
+
+
     // Helper method to generate cache key from request
     private String generateCacheKey(Request request)
     {
