@@ -139,7 +139,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     //Method that logs the current queue size with a timestamp to a file with the server zone in the file name
     private void logQueueSizeToFile() throws IOException {
-        String logFilePath = "src/main/resources/serverLogFiles" + zone + ".txt";
+        String logFilePath = "src/main/resources/serverLogFiles/" + zone + ".txt";
         int currentQueueSize = queueSize();
         String timestamp = new java.util.Date().toString();
 
