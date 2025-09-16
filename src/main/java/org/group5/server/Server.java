@@ -89,7 +89,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     
     // Simulating latency before adding request to queue
-    private synchronized CompletableFuture<Object> addRequest(Request request)
+    private CompletableFuture<Object> addRequest(Request request)
     {
         String requestId = UUID.randomUUID().toString();
         request.setRequestId(requestId);
