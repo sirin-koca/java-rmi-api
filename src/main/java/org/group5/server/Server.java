@@ -15,6 +15,8 @@ import org.group5.common.ComputationCache;
 import org.group5.common.LoggerConfig;
 import org.group5.proxy.ProxyServerInterface;
 
+import static java.lang.Math.abs;
+
 public class Server extends UnicastRemoteObject implements ServerInterface
 {
     private static final Logger logger = LoggerConfig.getSimpleLogger(Server.class);
@@ -102,14 +104,15 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             int clientZone = request.getClientZone();
             if (zone != clientZone)
             {
-                // increase latency based on client zone
-                long latency = 80 + 30L * clientZone;
+                // when server and client on different zones, use the distance between server zone and client zone
+                int diff = abs(zone - clientZone);
+                long latency = 80 + 30L * diff;
                 //                logger.info("Request from different zone, sleeping for " + latency + "ms");
                 Thread.sleep(latency);
             }
             else
             {
-                // standard latency 80ms when client and server in same zone
+                // standard latency 80ms when client and server in the same zone
                 //                logger.info("Request from same zone, sleeping for 80ms");
                 Thread.sleep(80);
             }
@@ -521,7 +524,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         System.out.println("Usage: java Server [OPTIONS]");
         System.out.println("Options:");
         System.out.println("  --enable-cache    Enable server-side caching (default: false)");
-        //        System.out.println("  --use-lru         Use LRU eviction policy instead of FIFO (default: false)");
+        //      System.out.println("  --use-lru   Use LRU eviction policy instead of FIFO (default: false)");
         System.out.println("  --help            Show this help message");
         System.out.println();
         System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");

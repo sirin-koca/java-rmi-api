@@ -3,17 +3,14 @@
 _🚧 Work in progress –This README will be updated as the project grows._
 
 ### 1. Overview
-
-This project is the first mandatory assignment in IN5020.
-We will implement a distributed system using Java RMI, with following components:
-- Proxy (load balancer) server
-- Multiple processing servers across zones
-- Client issuing statistical queries on a global cities dataset
-- Naïve parsing, server-side caching, and client-side caching strategies
+Distributed system over Java RMI with:
+- Proxy (load balancer)
+- Multiple servers across zones
+- Client sending queries from an input file
+- Three caching modes: naïve, server-side cache, client-side cache
 - Docker containerization for deployment
-
-Objective: Measure and compare performance (latency, execution time, waiting time) across different setups.
-Toolchain: Java: Temurin 21.0.8, Maven 3x
+- Goal: measure turnaround / latency/ execution / waiting times per query type.
+- Toolchain: JDK 21 (Temurin), Maven 3.x, Docker version 26.1.1
 
 ### 2. Features
 - Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
