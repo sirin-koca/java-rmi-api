@@ -1,68 +1,126 @@
 # Java RMI – International Statistics Service
 
-_🚧 Work in progress
+A distributed Java RMI system with a proxy (load balancer), multiple zone-based servers, optional client/server caching, and Docker packaging. Aligned with IN5020/9020 – The First Mandatory Programming Assignment (Autumn 2025).
 
-### 1. Overview
-Distributed system over Java RMI with:
-- Proxy (load balancer)
-- Multiple servers across zones
-- Client sending queries from an input file
-- Three caching modes: naïve, server-side cache, client-side cache
-- Docker containerization for deployment
-- Goal: measure turnaround / latency/ execution / waiting times per query type.
-- Toolchain: JDK 21 (Temurin), Maven 3.x, Docker version 26.1.1
-
-### 2. Features
-- Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
-- Servers: Handle statistical queries, queues, and simulate network latency.
+## 1. Objectives
+- Stub/Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
+- Servers: Multiple processing servers across zones, handle statistical queries, queues, and simulate network latency.
 - Client: Parses query files, executes remote calls, and collects performance metrics.
-- Caching methods
+- Caching methods: Naïve parsing, server-side caching, and client-side caching strategies
 - Dockerized Deployment: Servers containerized for reproducibility.
 - Graphs & Logs: Visualize turnaround time, execution time, waiting time, and server queue length.
 
-### 3. System Architecture
-_Short description of Proxy, Server, Client roles, dataset and storage (* visualize the SA - diagram etc.)_
-#### Queries Supported
+
+## 2. System Architecture
+- **Proxy (load balancer)**: Clients ask the proxy for a processing server for their zone.Proxy prefers a server in the same zone; if overloaded (≥18 queued), it chooses the least-loaded neighbor clockwise; if no server in a zone, it reroutes to the closest clockwise zone. After every 18 assignments to a server, the proxy updates its view of that server’s load (non-blocking).RMI registry binds the proxy under the name "proxy" on port 1099 (see ProxyServer main).
+- **Servers**: Each server exposes the stats API (below), maintains a request queue, and may enable an internal cache (FIFO or LRU). Default dataset path in code: `src/main/resources/dataset/exercise_1_dataset.csv`
+- **Client**: Reads queries and emits timing stats. Default input: `src/main/resources/input/exercise_1_input.txt`. Modes: naive, server-cache, client-cache. Output examples are recorded under `src/main/resources/output/`*(please see the provided samples).
+- **Simulated latency**: Base 80 ms within same zone; add 30 ms × zone-distance to neighbor zones (clockwise).
+- **Data source**: [Geonames – Cities >1000 population](https://public.opendatasoft.com/explore/dataset/geonames-all-cities-with-a-population-1000/)
+- **Queries Supported**:
 ```
 getPopulationofCountry(countryName)
 getNumberofCities(countryName, threshold, comp)
 getNumberofCountries(citycount, threshold, comp)
 getNumberofCountriesMM(citycount, minPopulation, maxPopulation)
 ```
-### 4. Caching Strategies
+## 3. Caching Strategies
 - Naïve (no cache).
 - Server-side cache (FIFO, LRU).
 - Client-side cache.
 
-### 5. Dataset
-Source: Geonames all cities with population >1000
-~140,000 cities worldwide.
+## 4. USER MANUAL
+### 4.1 Prerequisites
+- Install [Docker](https://docs.docker.com/get-docker/).
+- Java JDK (Temurin 21)
+- Ensure dataset is available: `src/main/resources/dataset/exercise_1_dataset.csv`
+- Clone the project repository:
+  ```
+  git clone https://github.com/sirin-koca/java-rmi-api
+  cd java-rmi-api
+  ```
+  
+### 4.2 How to deploy Docker:
+  1) Download, unzip and place it under the project-root
+  #### Docker image url: https://drive.google.com/file/d/1UgLLHQiGkd9nuXi5QaKtMUwIDV5sruLA/view?usp=sharing
+  - **Filename**: ds-asn1-server-1.0.zip
+  - **Size**: ~109 MB
+  - **Expected SHA-256 (ZIP)**: EA3B73CA046CB4A1F0D177D69646196AA30595B572B7B76C53292D7F6D414D71
+    - macOS/Linux: `shasum -a 256 ds-asn1-server-1.0.zip`
+    - Windows (PowerShell): `Get-FileHash ds-asn1-server-1.0.zip -Algorithm SHA256`
 
-### 6. Build & Run
-_(How to build (Maven), how to run Proxy, Servers, Client etc.) - mention Dockerizing here (sirin)_
+  2) Load image:  `docker load -i ds-asn1-server-1.0.tar`
 
-### 7. Output & Measurements
-- Output files: naive_server.txt, server_cache.txt, client_cache.txt.
+
+### 4.3 Compile packages:
+```
+mvn -q -DskipTests package
+```
+### 4.4 Start Proxy (Terminal A)
+* (creates RMI registry on 1099, binds "proxy")
+```
+java -cp target/classes org.group5.proxy.ProxyServer
+```
+### 4.5 Build Docker image (Terminal B):
+```
+docker build -f docker\server\Dockerfile -t rmi-server:dev .
+```
+### 4.6 Run servers (Terminal C):
+* (each server on a new terminal)
+````
+# Server #1:
+docker run --rm --name rmi-s1 `
+  -e PROXY_HOST=host.docker.internal `
+  -e SERVER_HOST=host.docker.internal `
+  -e RMI_REGISTRY_PORT=1099 `
+  -e SERVER_PORT=2000 `
+  -e SERVER_NAME=server1 `
+  -p 2000:2000 rmi-server:dev
+
+# Server #2:
+docker run --rm --name rmi-s2 `
+  -e PROXY_HOST=host.docker.internal `
+  -e SERVER_HOST=host.docker.internal `
+  -e RMI_REGISTRY_PORT=1099 `
+  -e SERVER_PORT=2001 `
+  -e SERVER_NAME=server2 `
+  -p 2001:2001 rmi-server:dev
+
+# Server #3:
+docker run --rm --name rmi-s3 `
+  -e PROXY_HOST=host.docker.internal `
+  -e SERVER_HOST=host.docker.internal `
+  -e RMI_REGISTRY_PORT=1099 `
+  -e SERVER_PORT=2002 `
+  -e SERVER_NAME=server3 `
+  -p 2001:2001 rmi-server:dev
+````
+### 4.6 Run client (Terminal D):
+````
+java -cp target/classes org.group5.client.Client --mode server-cache
+````
+
+## 5. Results & Output
+- Client logs 
+- Server logs queue length over time
+- Output files: naive_server.txt, server_cache.txt, client_cache.txt. 
 - Metrics: turnaround, execution, waiting time.
-- Graphs for turnaround time and queue length.
+- Graphs for turnaround time and queue length (ref. submitted report as PDF).
+- Output examples are recorded under `src/main/resources/output/`*(please see the provided samples).
 
-### 8. Workload Distribution
-_How the group collaborates, who is responsible for what etc._
-1) Mariam:  Client & Proxy
-2) Martta: Server & Queue
-3) Staal: Caching
-4) Sirin: Dockerize
+## 6. Workload Distribution
+- Marta: Server
+- Mariam: Client + Proxy
+- Stål: Caching + graphs
+- Sirin: Docker + report
 
-### 9. Deliverables
-_What will be submitted: code, Docker images, report, graphs, output files etc._
+## 7. Deliverables
+- Source code (zip file)
+- Final report as PDF with screenshots
+- Ready to deploy docker image 
+- Output files, logs & graphs
 
-## About Java RMI
-Java Remote Method Invocation (RMI) allows distributed Java applications to call methods on remote objects running in other 
-JVMs, possibly on different hosts. It uses object serialization to transfer data and fully supports polymorphism across the network.
+---
+IFI @ UIO | IN5020 Group5 | H2025
 
-#### Key Concept: Distributed Systems: 
-A Distributed System consists of multiple computers (nodes) that communicate and coordinate over a network. 
-The goal is to appear as a single, unified system, even though its components run on different machines.
-
-_Source: [Java SE Remote Method Invocation APIs and Developer Guides](https://docs.oracle.com/javase/8/docs/technotes/guides/rmi/index.html)_
-
+---
