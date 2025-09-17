@@ -38,7 +38,7 @@ getNumberofCountriesMM(citycount, minPopulation, maxPopulation)
 - Install [Docker](https://docs.docker.com/get-docker/).
 - Java JDK (Temurin 21)
 - Ensure dataset is available: `src/main/resources/dataset/exercise_1_dataset.csv`
-- Clone the project repository:
+- Clone the project repository from:
   ```
   git clone https://github.com/sirin-koca/java-rmi-api
   cd java-rmi-api
