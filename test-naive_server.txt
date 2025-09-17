@@ -1,0 +1,4 @@
+# Test file
+9362428 getPopulationofCountry Sweden Zone:1 (turnaround time: 329 ms, execution time: 176 ms, waiting time: 153 ms, processed by Server 1)
+9362428 getPopulationofCountry Sweden Zone:1 (turnaround time: 537 ms, execution time: 356 ms, waiting time: 181 ms, processed by Server 1)
+0 getPopulationofCountry getPopulationofCountry French Guiana Zone:4 Zone:1 (turnaround time: 243 ms, execution time: 61 ms, waiting time: 182 ms, processed by Server 1)
