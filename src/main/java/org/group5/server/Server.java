@@ -25,13 +25,14 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     private static final String CSV_PATH =
             System.getProperty("csv.path", "src/main/resources/dataset/exercise_1_dataset.csv");
     private final int zone;
-
+    
     //Logging thread for writing queue size at intervals to server log file
     private ScheduledExecutorService scheduler;
     
     // Configuration flags
     private static boolean cacheEnabled = false;
-    //    private static boolean useLRU = false;
+    private static boolean useLRU = false;
+    private static boolean cliParsed = false;
     
     // Server-side cache
     private final ComputationCache serverCache;
@@ -39,46 +40,60 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     // Map to store futures for request results
     private final Map<String, CompletableFuture<Object>> resultFutures = new ConcurrentHashMap<>();
     
+    /**
+     * Static initializer - runs once when class is first loaded
+     */
+    static
+    {
+        // Check if we're being run with command-line args
+        String[] args = System.getProperty("server.args", "").split("\\s+");
+        if (args.length > 0 && !args[0].isEmpty())
+        {
+            parseCommandLineArgs(args);
+        }
+    }
+    
     protected Server(String name, int port, boolean cache, boolean lru) throws RemoteException
     {
-        super(port); // export RMI object on the fixed port we pass (works through Docker port mapping)
-
-        if (cache)
+        super(port);
+        
+        // Determine which cache settings to use
+        boolean useCache = cliParsed ? cacheEnabled : cache;
+        boolean useLruPolicy = cliParsed ? useLRU : lru;
+        
+        // Initialize cache based on final decision
+        if (useCache)
         {
-            cacheEnabled = true;
-            serverCache = new ComputationCache(CACHE_SIZE, lru, name, logger);
+            this.serverCache = new ComputationCache(CACHE_SIZE, useLruPolicy, name, logger);
+            logger.info("Cache initialized for " + name + " with " +
+                    (useLruPolicy ? "LRU" : "FIFO") + " policy" +
+                    (cliParsed ? " (from CLI)" : " (from constructor)"));
         }
         else
         {
-            serverCache = null;
+            this.serverCache = null;
         }
         
         this.requestQueue = new LinkedBlockingQueue<>();
-        //Start the logging thread
         startQueueSizeLogger();
         
         // Connect to proxy and get zone number
-        try {
+        try
+        {
             String proxyHost = System.getProperty("proxy.host", "localhost");
-            int    proxyPort = Integer.parseInt(System.getProperty("proxy.port", "1099"));
-
-            // This value was set in ServerBootstrap, we read it here for registration
+            int proxyPort = Integer.parseInt(System.getProperty("proxy.port", "1099"));
             String advertisedHost = System.getProperty("java.rmi.server.hostname", "localhost");
-
+            
             Registry registry = LocateRegistry.getRegistry(proxyHost, proxyPort);
             ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
-
-            // Ask proxy for a zone
+            
             zone = proxy.assignZoneNumber(name);
-
-            // Bind this server object into the proxy's registry
             registry.rebind(name, this);
-
-            // Register server info (host + fixed RMI port)
+            
             org.group5.proxy.ServerInfo serverInfo =
                     new org.group5.proxy.ServerInfo(name, name, zone, advertisedHost, port);
             proxy.registerServer(serverInfo);
-
+            
             System.out.println("Assigned zone number: " + zone + " for server " + name);
         }
         catch (Exception e)
@@ -86,9 +101,13 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to register with proxy", e);
         }
         
-        // Start thread to handle execution of requests from queue
         Thread requestHandlerThread = new Thread(new RequestHandler());
         requestHandlerThread.start();
+    }
+    
+    protected Server(String name, int port) throws RemoteException
+    {
+        this(name, port, false, false); // Default to no cache
     }
     
     public static void main(String[] args)
@@ -132,63 +151,81 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         
         return future;
     }
+    
     //Start logging the queue size to a file every 10 seconds
-    private void startQueueSizeLogger(){
+    private void startQueueSizeLogger()
+    {
         scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(new Runnable() {
+        scheduler.scheduleAtFixedRate(new Runnable()
+        {
             @Override
-            public void run() {
-                try{
+            public void run()
+            {
+                try
+                {
                     logQueueSizeToFile();
-                }catch (IOException e){
+                }
+                catch (IOException e)
+                {
                     e.printStackTrace();
                 }
             }
         }, 0, 2, TimeUnit.SECONDS);
     }
+    
     //Method that logs the current queue size with a timestamp to a file with the server zone in the file name
-    private void logQueueSizeToFile() throws IOException {
+    private void logQueueSizeToFile() throws IOException
+    {
         String baseLogDir = System.getProperty(
                 "log.dir",
                 System.getenv().getOrDefault("LOG_DIR", "/app/logs")
         );
         File dir = new File(baseLogDir);
         if (!dir.exists()) dir.mkdirs();
-
+        
         String logFilePath = baseLogDir + "/" + zone + ".txt";
         int currentQueueSize = queueSize();
         String ts = new java.util.Date().toString();
-
-        try (BufferedWriter w = new BufferedWriter(new FileWriter(logFilePath, true))) {
+        
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(logFilePath, true)))
+        {
             w.write("Timestamp: " + ts + ", Queue Size: " + currentQueueSize);
             w.newLine();
         }
     }
+    
     //Get size of queue for server and proxy server use
     @Override
     public int queueSize() throws RemoteException
     {
         return requestQueue.size();
     }
+    
     //Shut down scheduler when server is done
-    public void shutdownServerLogger(){
-        if (scheduler != null){
+    public void shutdownServerLogger()
+    {
+        if (scheduler != null)
+        {
             scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)){
+            try
+            {
+                if (!scheduler.awaitTermination(60, TimeUnit.SECONDS))
+                {
                     scheduler.shutdownNow();
                 }
-            }catch (InterruptedException e){
+            }
+            catch (InterruptedException e)
+            {
                 scheduler.shutdownNow();
             }
         }
     }
-
+    
     @Override
     public long getPopulationofCountry(String countryName, int clientZone) throws RemoteException
     {
         Request request = new Request("getPopulationofCountry", countryName, clientZone);
-
+        
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -200,12 +237,12 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-
+    
     @Override
     public int getNumberofCities(String countryName, long threshold, int clientZone) throws RemoteException
     {
         Request request = new Request("getNumberofCities", countryName, threshold, clientZone);
-
+        
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -216,12 +253,12 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-
+    
     @Override
     public int getNumberofCountries(int citycount, long threshold, int clientZone) throws RemoteException
     {
         Request request = new Request("getNumberofCountries", citycount, threshold, clientZone);
-
+        
         try
         {
             CompletableFuture<Object> future = addRequest(request);
@@ -232,7 +269,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-
+    
     @Override
     public int getNumberofCountriesMM(int citycount, long minpopulation, long maxpopulation, int clientZone) throws RemoteException
     {
@@ -247,8 +284,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             throw new RemoteException("Failed to process request", e);
         }
     }
-
-
+    
+    
     // Helper method to generate cache key from request
     private String generateCacheKey(Request request)
     {
@@ -270,7 +307,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             {
                 try
                 {
-//                    Thread.sleep(300);
+                    //                    Thread.sleep(300);
                     Request request = requestQueue.take();
                     processRequest(request);
                 }
@@ -536,7 +573,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         System.out.println("Usage: java Server [OPTIONS]");
         System.out.println("Options:");
         System.out.println("  --enable-cache    Enable server-side caching (default: false)");
-        //      System.out.println("  --use-lru   Use LRU eviction policy instead of FIFO (default: false)");
+        System.out.println("  --use-lru   Use LRU eviction policy instead of FIFO (default: false)");
         System.out.println("  --help            Show this help message");
         System.out.println();
         System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");
@@ -552,10 +589,10 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                     cacheEnabled = true;
                     logger.info("Cache enabled");
                     break;
-                //                case "--use-lru":
-                //                    useLRU = true;
-                //                    logger.info("LRU cache policy selected");
-                //                    break;
+                case "--use-lru":
+                    useLRU = true;
+                    logger.info("LRU cache policy selected");
+                    break;
                 case "--help":
                     printUsage();
                     System.exit(0);
