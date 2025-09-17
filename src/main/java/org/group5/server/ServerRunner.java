@@ -1,8 +1,7 @@
 package org.group5.server;
 
 /**
- * Docker launcher:
- * This is a simple launcher that starts ONE server.
+ * This is a simple Docker launcher that starts ONE server.
  * Reads settings from environment variables (so Docker can pass them).
  */
 public class ServerRunner {
