@@ -1,6 +1,10 @@
 # Java RMI – International Statistics Service
 
-A distributed Java RMI system with a proxy (load balancer), multiple zone-based servers, optional client/server caching, and Docker packaging. Aligned with IN5020/9020 – The First Mandatory Programming Assignment (Autumn 2025).
+This project implements an object-based distributed system using Java RMI for remote method invocation. 
+It follows a simple client/server architecture with a load-balancing proxy, processes a large dataset, and 
+simulates remote communication on a single machine. To improve scalability and reproducibility, 
+it integrates caching mechanisms and hosts the servers in Docker containers.
+- The first mandatory assignment in IN5020, Autumn 2025.
 
 ## 1. Objectives
 - Stub/Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
