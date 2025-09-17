@@ -7,12 +7,6 @@ it integrates caching mechanisms and hosts the servers in Docker containers.
 - The first mandatory assignment in IN5020, Autumn 2025.
 
 ## 1. Objectives
-- Stub/Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.
-- Servers: Multiple processing servers across zones, handle statistical queries, queues, and simulate network latency.
-- Client: Parses query files, executes remote calls, and collects performance metrics.
-- Caching methods: Naïve parsing, server-side caching, and client-side caching strategies
-- Dockerized Deployment: Servers containerized for reproducibility.
-- Graphs & Logs: Visualize turnaround time, execution time, waiting time, and server queue length.
 
 
 ## 2. System Architecture
