@@ -45,15 +45,17 @@ getNumberofCountriesMM(citycount, minPopulation, maxPopulation)
   ```
   
 ### 4.2 How to deploy Docker:
-  1) Download, unzip and place it under the project-root
+
   #### Docker image url: https://drive.google.com/file/d/1UgLLHQiGkd9nuXi5QaKtMUwIDV5sruLA/view?usp=sharing
+
   - **Filename**: ds-asn1-server-1.0.zip
   - **Size**: ~109 MB
   - **Expected SHA-256 (ZIP)**: EA3B73CA046CB4A1F0D177D69646196AA30595B572B7B76C53292D7F6D414D71
     - macOS/Linux: `shasum -a 256 ds-asn1-server-1.0.zip`
     - Windows (PowerShell): `Get-FileHash ds-asn1-server-1.0.zip -Algorithm SHA256`
-
-  2) Load image:  `docker load -i ds-asn1-server-1.0.tar`
+    
+1) Download, unzip and place it under the project-root
+2) Load image:  `docker load -i ds-asn1-server-1.0.tar`
 
 
 ### 4.3 Compile packages:
