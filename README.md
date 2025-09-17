@@ -3,10 +3,14 @@
 _🚧 Work in progress –This README will be updated as the project grows._
 
 ### 1. Overview
-
-This project is the first mandatory assignment in IN5020.
-We will implement a distributed system using Java RMI, measure and compare performance (latency, execution time, 
-waiting time) across different setups.
+Distributed system over Java RMI with:
+- Proxy (load balancer)
+- Multiple servers across zones
+- Client sending queries from an input file
+- Three caching modes: naïve, server-side cache, client-side cache
+- Docker containerization for deployment
+- Goal: measure turnaround / latency/ execution / waiting times per query type.
+- Toolchain: JDK 21 (Temurin), Maven 3.x, Docker version 26.1.1
 
 ### 2. Features
 - Stub/Proxy/Load Balancer: Distributes requests by zone, with fallback and load balancing.

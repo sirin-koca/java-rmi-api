@@ -1,0 +1,23 @@
+# VCS / IDE
+.git
+.gitignore
+.idea
+.vscode
+*.iml
+
+# Build outputs
+target
+out
+
+# Local logs & outputs
+src/main/resources/output/
+src/main/resources/serverLogFiles/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Tool caches
+.gradle
+.mvn/wrapper/maven-wrapper.jar
