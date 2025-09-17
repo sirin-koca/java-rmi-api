@@ -1,6 +1,7 @@
 package org.group5.server;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -29,10 +30,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     //Logging thread for writing queue size at intervals to server log file
     private ScheduledExecutorService scheduler;
     
-    // Configuration flags
-    private static boolean cacheEnabled = false;
-    private static boolean useLRU = false;
-    private static boolean cliParsed = false;
+    private boolean cacheEnabled = false;
     
     // Server-side cache
     private final ComputationCache serverCache;
@@ -40,38 +38,23 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     // Map to store futures for request results
     private final Map<String, CompletableFuture<Object>> resultFutures = new ConcurrentHashMap<>();
     
-    /**
-     * Static initializer - runs once when class is first loaded
-     */
-    static
-    {
-        // Check if we're being run with command-line args
-        String[] args = System.getProperty("server.args", "").split("\\s+");
-        if (args.length > 0 && !args[0].isEmpty())
-        {
-            parseCommandLineArgs(args);
-        }
-    }
-    
-    protected Server(String name, int port, boolean cache, boolean lru) throws RemoteException
+    protected Server(String name, int port, boolean cacheEnabled, boolean useLRU) throws RemoteException
     {
         super(port);
         
-        // Determine which cache settings to use
-        boolean useCache = cliParsed ? cacheEnabled : cache;
-        boolean useLruPolicy = cliParsed ? useLRU : lru;
+        this.cacheEnabled = cacheEnabled;
         
-        // Initialize cache based on final decision
-        if (useCache)
+        // Initialize cache based on configuration
+        if (cacheEnabled)
         {
-            this.serverCache = new ComputationCache(CACHE_SIZE, useLruPolicy, name, logger);
+            this.serverCache = new ComputationCache(CACHE_SIZE, useLRU, name, logger);
             logger.info("Cache initialized for " + name + " with " +
-                    (useLruPolicy ? "LRU" : "FIFO") + " policy" +
-                    (cliParsed ? " (from CLI)" : " (from constructor)"));
+                    (useLRU ? "LRU" : "FIFO") + " policy");
         }
         else
         {
             this.serverCache = null;
+            logger.info("Cache disabled for " + name);
         }
         
         this.requestQueue = new LinkedBlockingQueue<>();
@@ -80,9 +63,12 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         // Connect to proxy and get zone number
         try
         {
-            String proxyHost = System.getProperty("proxy.host", "localhost");
+            String proxyHost = System.getProperty("proxy.host", "localhost");  // Docker service name
             int proxyPort = Integer.parseInt(System.getProperty("proxy.port", "1099"));
-            String advertisedHost = System.getProperty("java.rmi.server.hostname", "localhost");
+            
+            // In Docker, use container hostname
+            String advertisedHost = System.getProperty("java.rmi.server.hostname",
+                    InetAddress.getLocalHost().getHostName());
             
             Registry registry = LocateRegistry.getRegistry(proxyHost, proxyPort);
             ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
@@ -94,7 +80,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                     new org.group5.proxy.ServerInfo(name, name, zone, advertisedHost, port);
             proxy.registerServer(serverInfo);
             
-            System.out.println("Assigned zone number: " + zone + " for server " + name);
+            logger.info("Server " + name + " registered with zone " + zone +
+                    " on " + advertisedHost + ":" + port);
         }
         catch (Exception e)
         {
@@ -105,14 +92,92 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         requestHandlerThread.start();
     }
     
-    protected Server(String name, int port) throws RemoteException
-    {
-        this(name, port, false, false); // Default to no cache
-    }
-    
     public static void main(String[] args)
     {
-        parseCommandLineArgs(args);
+        // Configuration with defaults
+        String serverName = "Server1";
+        int serverPort = 1100;
+        boolean cacheEnabled = false;
+        boolean useLRU = false;
+        
+        // Parse command line arguments
+        for (int i = 0; i < args.length; i++)
+        {
+            switch (args[i])
+            {
+                case "--name":
+                case "-n":
+                    if (i + 1 < args.length)
+                    {
+                        serverName = args[++i];
+                    }
+                    break;
+                
+                case "--port":
+                case "-p":
+                    if (i + 1 < args.length)
+                    {
+                        serverPort = Integer.parseInt(args[++i]);
+                    }
+                    break;
+                
+                case "--enable-cache":
+                    cacheEnabled = true;
+                    break;
+                
+                case "--use-lru":
+                    useLRU = true;
+                    break;
+                
+                case "--help":
+                    printUsage();
+                    System.exit(0);
+                    break;
+                
+                default:
+                    if (args[i].startsWith("-"))
+                    {
+                        System.err.println("Unknown option: " + args[i]);
+                        printUsage();
+                        System.exit(1);
+                    }
+            }
+        }
+        
+        try
+        {
+            // Create and start server
+            logger.info("Starting server with configuration:");
+            logger.info("  Name: " + serverName);
+            logger.info("  Port: " + serverPort);
+            logger.info("  Cache: " + (cacheEnabled ? "enabled" : "disabled"));
+            if (cacheEnabled)
+            {
+                logger.info("  Cache Policy: " + (useLRU ? "LRU" : "FIFO"));
+            }
+            
+            Server server = new Server(serverName, serverPort, cacheEnabled, useLRU);
+            
+            // Register shutdown hook for graceful shutdown
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                logger.info("Shutdown signal received (SIGTERM/SIGINT)");
+                server.shutdown();
+            }));
+            
+            logger.info("Server " + serverName + " is running and ready to accept requests");
+            System.out.println("Server started successfully. Container will stay running.");
+            
+            // Keep the main thread alive - this is what keeps the Docker container running
+            // Docker will send SIGTERM when stopping the container, which triggers our shutdown hook
+            Thread.currentThread().join();
+            
+        }
+        catch (Exception e)
+        {
+            logger.severe("Failed to start server: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
     
     // Simulating latency before adding request to queue
@@ -340,9 +405,10 @@ public class Server extends UnicastRemoteObject implements ServerInterface
             String cacheKey = generateCacheKey(request);
             
             // Check cache first if enabled
-            if (cacheEnabled && serverCache != null)
+            // Configuration flags
+            if (this.cacheEnabled && this.serverCache != null)
             {
-                String cachedResult = serverCache.get(cacheKey);
+                String cachedResult = this.serverCache.get(cacheKey);
                 if (cachedResult != null)
                 {
                     // Parse cached result back to appropriate type
@@ -392,7 +458,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
                         return;
                 }
                 // Store result in cache if enabled
-                if (cacheEnabled && serverCache != null)
+                if (this.cacheEnabled && this.serverCache != null)
                 {
                     serverCache.put(cacheKey, result.toString());
                 }
@@ -572,40 +638,49 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     {
         System.out.println("Usage: java Server [OPTIONS]");
         System.out.println("Options:");
-        System.out.println("  --enable-cache    Enable server-side caching (default: false)");
-        System.out.println("  --use-lru   Use LRU eviction policy instead of FIFO (default: false)");
-        System.out.println("  --help            Show this help message");
+        System.out.println("  -n, --name NAME       Server name (default: Server1)");
+        System.out.println("  -p, --port PORT       Server port (default: 1100)");
+        System.out.println("  --enable-cache        Enable server-side caching");
+        System.out.println("  --use-lru            Use LRU eviction policy (requires --enable-cache)");
+        System.out.println("  --help               Show this help message");
         System.out.println();
-        System.out.println("Note: --use-lru only takes effect when --enable-cache is also specified");
+        System.out.println("Environment variables (via -D flags or docker env):");
+        System.out.println("  proxy.host           Proxy hostname (default: localhost)");
+        System.out.println("  proxy.port           Proxy port (default: 1099)");
+        System.out.println("  csv.path             Path to dataset CSV ");
+        System.out.println("  log.dir              Directory for log files");
     }
     
-    private static void parseCommandLineArgs(String[] args)
+    /**
+     * Graceful shutdown
+     */
+    private void shutdown()
     {
-        for (String arg : args)
+        logger.info("Starting graceful shutdown...");
+        
+        // Stop the scheduler
+        shutdownServerLogger();
+        
+        // Wait for pending requests (with timeout)
+        try
         {
-            switch (arg)
+            int pending = requestQueue.size();
+            if (pending > 0)
             {
-                case "--enable-cache":
-                    cacheEnabled = true;
-                    logger.info("Cache enabled");
-                    break;
-                case "--use-lru":
-                    useLRU = true;
-                    logger.info("LRU cache policy selected");
-                    break;
-                case "--help":
-                    printUsage();
-                    System.exit(0);
-                    break;
-                default:
-                    if (arg.startsWith("--"))
-                    {
-                        System.err.println("Unknown flag: " + arg);
-                        printUsage();
-                        System.exit(1);
-                    }
-                    break;
+                logger.info("Waiting for " + pending + " pending requests (max 10 seconds)...");
+                Thread.sleep(Math.min(pending * 100, 10000));
             }
+            
+            // Unexport RMI object
+            UnicastRemoteObject.unexportObject(this, true);
+            logger.info("RMI object unexported successfully");
+            
         }
+        catch (Exception e)
+        {
+            logger.warning("Error during shutdown: " + e.getMessage());
+        }
+        
+        logger.info("Shutdown complete");
     }
 }
