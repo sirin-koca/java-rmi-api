@@ -1,6 +1,6 @@
 # Java RMI – International Statistics Service
 
-_🚧 Work in progress –This README will be updated as the project grows._
+_🚧 Work in progress
 
 ### 1. Overview
 Distributed system over Java RMI with:

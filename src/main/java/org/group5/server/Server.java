@@ -22,7 +22,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     private static final Logger logger = LoggerConfig.getSimpleLogger(Server.class);
     private static final int CACHE_SIZE = 150;
     private final BlockingQueue<Request> requestQueue;
-    private static final String csv_path = "src/main/resources/dataset/exercise_1_dataset.csv";
+    private static final String CSV_PATH =
+            System.getProperty("csv.path", "src/main/resources/dataset/exercise_1_dataset.csv");
     private final int zone;
 
     //Logging thread for writing queue size at intervals to server log file
@@ -40,8 +41,8 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     
     protected Server(String name, int port, boolean cache, boolean lru) throws RemoteException
     {
-        super();
-        
+        super(port); // export RMI object on the fixed port we pass (works through Docker port mapping)
+
         if (cache)
         {
             cacheEnabled = true;
@@ -57,22 +58,27 @@ public class Server extends UnicastRemoteObject implements ServerInterface
         startQueueSizeLogger();
         
         // Connect to proxy and get zone number
-        try
-        {
-            Registry registry = LocateRegistry.getRegistry("localhost", 1099);
+        try {
+            String proxyHost = System.getProperty("proxy.host", "localhost");
+            int    proxyPort = Integer.parseInt(System.getProperty("proxy.port", "1099"));
+
+            // This value was set in ServerBootstrap, we read it here for registration
+            String advertisedHost = System.getProperty("java.rmi.server.hostname", "localhost");
+
+            Registry registry = LocateRegistry.getRegistry(proxyHost, proxyPort);
             ProxyServerInterface proxy = (ProxyServerInterface) registry.lookup("proxy");
-            
-            // Assign a zone from proxy
+
+            // Ask proxy for a zone
             zone = proxy.assignZoneNumber(name);
-            
-            // Bind server object in registry under servers name
+
+            // Bind this server object into the proxy's registry
             registry.rebind(name, this);
-            
-            // Register server info with proxy
+
+            // Register server info (host + fixed RMI port)
             org.group5.proxy.ServerInfo serverInfo =
-                    new org.group5.proxy.ServerInfo(name, name, zone, "localhost", port);
+                    new org.group5.proxy.ServerInfo(name, name, zone, advertisedHost, port);
             proxy.registerServer(serverInfo);
-            
+
             System.out.println("Assigned zone number: " + zone + " for server " + name);
         }
         catch (Exception e)
@@ -142,14 +148,20 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     }
     //Method that logs the current queue size with a timestamp to a file with the server zone in the file name
     private void logQueueSizeToFile() throws IOException {
-        String logFilePath = "src/main/resources/serverLogFiles/" + zone + ".txt";
-        int currentQueueSize = queueSize();
-        String timestamp = new java.util.Date().toString();
+        String baseLogDir = System.getProperty(
+                "log.dir",
+                System.getenv().getOrDefault("LOG_DIR", "/app/logs")
+        );
+        File dir = new File(baseLogDir);
+        if (!dir.exists()) dir.mkdirs();
 
-        //Write queue size and timestamp to the file
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(logFilePath, true))){
-            writer.write("Timestamp: " + timestamp + ", Queue Size: " + currentQueueSize);
-            writer.newLine();
+        String logFilePath = baseLogDir + "/" + zone + ".txt";
+        int currentQueueSize = queueSize();
+        String ts = new java.util.Date().toString();
+
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(logFilePath, true))) {
+            w.write("Timestamp: " + ts + ", Queue Size: " + currentQueueSize);
+            w.newLine();
         }
     }
     //Get size of queue for server and proxy server use
@@ -377,7 +389,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     private long calculatePopulationofCountry(String countryName)
     {
         long population = 0;
-        try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
+        try (BufferedReader br = new BufferedReader(new FileReader(CSV_PATH)))
         {
             String line;
             while ((line = br.readLine()) != null)
@@ -399,7 +411,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     private int calculateNumberofCities(String countryName, long threshold)
     {
         int cityCount = 0;
-        try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
+        try (BufferedReader br = new BufferedReader(new FileReader(CSV_PATH)))
         {
             String line;
             while ((line = br.readLine()) != null)
@@ -423,7 +435,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     {
         Map<String, Integer> citiesPerCountry = new HashMap<>();
         
-        try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
+        try (BufferedReader br = new BufferedReader(new FileReader(CSV_PATH)))
         {
             String line;
             boolean firstLine = true;
@@ -473,7 +485,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface
     {
         Map<String, Integer> countryCities = new HashMap<>();
         
-        try (BufferedReader br = new BufferedReader(new FileReader(csv_path)))
+        try (BufferedReader br = new BufferedReader(new FileReader(CSV_PATH)))
         {
             String line;
             boolean firstLine = true;
