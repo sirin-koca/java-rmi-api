@@ -73,6 +73,7 @@ docker build -f docker\server\Dockerfile -t rmi-server:dev .
 ```
 ### 4.6 Run servers (Terminal C):
 * (each server on a new terminal)
+* Need to modify the three instances of the port number (200X) and SERVER=_NAME when instantiating multiple servers.
 ````
 # Server #1:
 docker run --rm --name rmi-s1 `
@@ -99,7 +100,7 @@ docker run --rm --name rmi-s3 `
   -e RMI_REGISTRY_PORT=1099 `
   -e SERVER_PORT=2002 `
   -e SERVER_NAME=server3 `
-  -p 2001:2001 rmi-server:dev
+  -p 2002:2002 rmi-server:dev
 ````
 ### 4.6 Run client (Terminal D):
 ````
