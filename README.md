@@ -1,5 +1,4 @@
 # Java RMI – International Statistics Service
-
 This project implements an object-based distributed system using Java RMI for remote method invocation. 
 It follows a simple client/server architecture with a load-balancing proxy, processes a large dataset, and 
 simulates remote communication on a single machine. To improve scalability and reproducibility, 
@@ -14,9 +13,8 @@ it integrates caching mechanisms and hosts the servers in Docker containers.
 - Dockerized Deployment: Servers containerized for reproducibility.
 - Graphs & Logs: Visualize turnaround time, execution time, waiting time, and server queue length.
 
-
 ## 2. System Architecture
-- **Proxy (load balancer)**: Clients ask the proxy for a processing server for their zone.Proxy prefers a server in the same zone; if overloaded (≥18 queued), it chooses the least-loaded neighbor clockwise; if no server in a zone, it reroutes to the closest clockwise zone. After every 18 assignments to a server, the proxy updates its view of that server’s load (non-blocking).RMI registry binds the proxy under the name "proxy" on port 1099 (see ProxyServer main).
+- **Proxy (load balancer)**: Clients ask the proxy for a processing server for their zone. Proxy prefers a server in the same zone; if overloaded (≥18 queued), it chooses the least-loaded neighbor clockwise; if no server in a zone, it reroutes to the closest clockwise zone. After every 18 assignments to a server, the proxy updates its view of that server’s load (non-blocking). RMI registry binds the proxy under the name "proxy" on port 1099 (see ProxyServer main).
 - **Servers**: Each server exposes the stats API (below), maintains a request queue, and may enable an internal cache (FIFO or LRU). Default dataset path in code: `src/main/resources/dataset/exercise_1_dataset.csv`
 - **Client**: Reads queries and emits timing stats. Default input: `src/main/resources/input/exercise_1_input.txt`. Modes: naive, server-cache, client-cache. Output examples are recorded under `src/main/resources/output/`*(please see the provided samples).
 - **Simulated latency**: Base 80 ms within same zone; add 30 ms × zone-distance to neighbor zones (clockwise).
@@ -36,90 +34,61 @@ getNumberofCountriesMM(citycount, minPopulation, maxPopulation)
 ## 4. USER MANUAL
 ### 4.1 Prerequisites
 - Install [Docker](https://docs.docker.com/get-docker/).
-- Java JDK (Temurin 21)
+- Java JDK >= 24 (Earlier versions may work, but not tested) and added to PATH (required by Maven)
+- Maven >= 3.9.11  and added to PATH (Earlier versions may work, but not tested)
 - Ensure dataset is available: `src/main/resources/dataset/exercise_1_dataset.csv`
-- Clone the project repository from:
-  ```
-  git clone https://github.com/sirin-koca/java-rmi-api
-  cd java-rmi-api
-  ```
+- Note that the dataset will be copied into individual Docker server containers, which is why the original file must be present.
   
 ### 4.2 How to deploy Docker:
-
-  #### Docker image url: https://drive.google.com/file/d/1UgLLHQiGkd9nuXi5QaKtMUwIDV5sruLA/view?usp=sharing
-
-  - **Filename**: ds-asn1-server-1.0.zip
-  - **Size**: ~109 MB
-  - **Expected SHA-256 (ZIP)**: EA3B73CA046CB4A1F0D177D69646196AA30595B572B7B76C53292D7F6D414D71
-    - macOS/Linux: `shasum -a 256 ds-asn1-server-1.0.zip`
-    - Windows (PowerShell): `Get-FileHash ds-asn1-server-1.0.zip -Algorithm SHA256`
-    
-1) Download, unzip and place it under the project-root
-2) Load image:  `docker load -i ds-asn1-server-1.0.tar`
-
+Navigate to project root (java-rmi-api)
+run `docker build -t rmi-server:dev -f Docker/server/Dockerfile .`
+That's it, you should see the image in Docker Desktop (give it some time to build).
 
 ### 4.3 Compile packages:
 ```
 mvn -q -DskipTests package
 ```
-### 4.4 Start Proxy (Terminal A)
+### 4.4 Start Proxy
 * (creates RMI registry on 1099, binds "proxy")
 ```
 java -cp target/classes org.group5.proxy.ProxyServer
 ```
-### 4.5 Build Docker image (Terminal B):
-```
-docker build -f docker\server\Dockerfile -t rmi-server:dev .
-```
-### 4.6 Run servers (Terminal C):
+### 4.5 Run servers
 * (each server on a new terminal)
 * Need to modify the three instances of the port number (200X) and SERVER=_NAME when instantiating multiple servers.
+* Three servers example commands:
 ````
-# Server #1:
-docker run --rm --name rmi-s1 `
-  -e PROXY_HOST=host.docker.internal `
-  -e SERVER_HOST=host.docker.internal `
-  -e RMI_REGISTRY_PORT=1099 `
-  -e SERVER_PORT=2000 `
-  -e SERVER_NAME=server1 `
-  -p 2000:2000 rmi-server:dev
-
-# Server #2:
-docker run --rm --name rmi-s2 `
-  -e PROXY_HOST=host.docker.internal `
-  -e SERVER_HOST=host.docker.internal `
-  -e RMI_REGISTRY_PORT=1099 `
-  -e SERVER_PORT=2001 `
-  -e SERVER_NAME=server2 `
-  -p 2001:2001 rmi-server:dev
-
-# Server #3:
-docker run --rm --name rmi-s3 `
-  -e PROXY_HOST=host.docker.internal `
-  -e SERVER_HOST=host.docker.internal `
-  -e RMI_REGISTRY_PORT=1099 `
-  -e SERVER_PORT=2002 `
-  -e SERVER_NAME=server3 `
-  -p 2002:2002 rmi-server:dev
+# Terminal #1:
+docker run --rm --name rmi-s1 -e PROXY_HOST=host.docker.internal -e SERVER_HOST=host.docker.internal -e RMI_REGISTRY_PORT=1099 -e SERVER_PORT=2000 -e SERVER_NAME=server1 -e SERVER_CACHE=true -p 2000:2000 rmi-server:dev
+# Terminal #2:
+docker run --rm --name rmi-s2 -e PROXY_HOST=host.docker.internal -e SERVER_HOST=host.docker.internal -e RMI_REGISTRY_PORT=1099 -e SERVER_PORT=2001 -e SERVER_NAME=server2 -e SERVER_CACHE=true -p 2001:2001 rmi-server:dev
+# Terminal #3:
+docker run --rm --name rmi-s3 -e PROXY_HOST=host.docker.internal -e SERVER_HOST=host.docker.internal -e RMI_REGISTRY_PORT=1099 -e SERVER_PORT=2002 -e SERVER_NAME=server3 -e SERVER_CACHE=true -p 2002:2002 rmi-server:dev
 ````
-### 4.6 Run client (Terminal D):
+### 4.6 Run client
+Open another new terminal.
+Possible modes are: naive, server-cache, client-cache.
+IMPORTANT: If running naive or client-cache, SERVER_CACHE must be set to false when launching the docker container.
+delay flag can be any value, default is 50 if absent.
 ````
-java -cp target/classes org.group5.client.Client --mode server-cache
+java -cp target/classes org.group5.client.Client --mode server-cache --delay 20
 ````
 
 ## 5. Results & Output
-- Client logs 
-- Server logs queue length over time
-- Output files: naive_server.txt, server_cache.txt, client_cache.txt. 
+- Server logs queue length over time (inside docker container, in app/logs)
+- Client output files: src/main/resources/output/ naive_server.txt, server_cache.txt, client_cache.txt. 
 - Metrics: turnaround, execution, waiting time.
 - Graphs for turnaround time and queue length (ref. submitted report as PDF).
-- Output examples are recorded under `src/main/resources/output/`*(please see the provided samples).
+- Output examples are located in the {delivery_root}/example_run_logs folder. Only one server was used for these runs,
+and it's the same data as the graphs are based on. The reason for only using one server is that the server load is so small that with multiple servers the queue mostly stays at 0.
 
 ## 6. Workload Distribution
 - Marta: Server
 - Mariam: Client + Proxy
 - Stål: Caching + graphs
 - Sirin: Docker + report
+
+In the end there was a decent amount of cross-module work, so the workload distribution is not entirely accurate.
 
 ## 7. Deliverables
 - Source code (zip file)
@@ -129,5 +98,4 @@ java -cp target/classes org.group5.client.Client --mode server-cache
 
 ---
 IFI @ UIO | IN5020 Group5 | H2025
-
 ---
